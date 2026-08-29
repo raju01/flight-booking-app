@@ -51,6 +51,20 @@ export function CalendarIcon({ className = "w-4 h-4" }: { className?: string }) 
   );
 }
 
+export function UserIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <circle cx="12" cy="8" r="3.6" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M4.5 20c0-4.1 3.4-7 7.5-7s7.5 2.9 7.5 7"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function UsersIcon({ className = "w-4 h-4" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className}>
@@ -158,6 +172,15 @@ export function CheckCircleIcon({ className = "w-6 h-6" }: { className?: string 
   );
 }
 
+export function XCircleIcon({ className = "w-6 h-6" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <circle cx="12" cy="12" r="9.5" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M9 9l6 6M15 9l-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function CardIcon({ className = "w-4 h-4" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className}>
@@ -211,6 +234,32 @@ export function WalletIcon({ className = "w-4 h-4" }: { className?: string }) {
       <rect x="2.5" y="6" width="19" height="13" rx="2.2" stroke="currentColor" strokeWidth="1.6" />
       <path d="M2.5 6a2.2 2.2 0 0 1 2.2-2.2h11.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       <circle cx="17" cy="13" r="1.5" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function BellIcon({
+  className = "w-4 h-4",
+  filled = false,
+}: {
+  className?: string;
+  filled?: boolean;
+}) {
+  return (
+    <svg viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} className={className}>
+      <path
+        d="M6 10.5a6 6 0 0 1 12 0c0 3.5 1 5 2 6H4c1-1 2-2.5 2-6Z"
+        stroke={filled ? "none" : "currentColor"}
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.5 19.5a2.5 2.5 0 0 0 5 0"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        fill="none"
+      />
     </svg>
   );
 }

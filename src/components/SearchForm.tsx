@@ -3,9 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import AirportAutocomplete from "@/components/AirportAutocomplete";
+import TravelerSelector from "@/components/TravelerSelector";
+import RecentSearches from "@/components/RecentSearches";
 import { SwapIcon, PlaneIcon, GripIcon } from "@/components/icons";
 import { CabinClass } from "@/types/flight";
 import { MultiCityLeg } from "@/types/multiCity";
+import { TravelerCounts, totalTravelers } from "@/types/traveler";
+import { addSearchHistoryEntry } from "@/lib/searchHistory";
+import { SearchHistoryEntry } from "@/types/searchHistory";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -30,7 +35,7 @@ export default function SearchForm() {
   const [to, setTo] = useState("BOM");
   const [departDate, setDepartDate] = useState(todayISO());
   const [returnDate, setReturnDate] = useState(todayISO());
-  const [passengers, setPassengers] = useState(1);
+  const [travelers, setTravelers] = useState<TravelerCounts>({ adults: 1, children: 0, infants: 0 });
   const [cabinClass, setCabinClass] = useState<CabinClass>("Economy");
   const [error, setError] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -90,7 +95,10 @@ export default function SearchForm() {
       setIsSearching(true);
 
       const params = new URLSearchParams({
-        passengers: String(passengers),
+        passengers: String(totalTravelers(travelers)),
+        adults: String(travelers.adults),
+        children: String(travelers.children),
+        infants: String(travelers.infants),
         cabinClass,
         tripType,
         legs: JSON.stringify(legs),
@@ -110,13 +118,36 @@ export default function SearchForm() {
       from,
       to,
       departDate,
-      passengers: String(passengers),
+      passengers: String(totalTravelers(travelers)),
+      adults: String(travelers.adults),
+      children: String(travelers.children),
+      infants: String(travelers.infants),
       cabinClass,
       tripType,
     });
     if (tripType === "round-trip") params.set("returnDate", returnDate);
 
+    addSearchHistoryEntry({
+      from,
+      to,
+      departDate,
+      returnDate: tripType === "round-trip" ? returnDate : undefined,
+      passengers: totalTravelers(travelers),
+      cabinClass,
+      tripType,
+    });
+
     router.push(`/search?${params.toString()}`);
+  }
+
+  function applyHistoryEntry(entry: SearchHistoryEntry) {
+    setTripType(entry.tripType);
+    setFrom(entry.from);
+    setTo(entry.to);
+    setDepartDate(entry.departDate);
+    if (entry.returnDate) setReturnDate(entry.returnDate);
+    setCabinClass(entry.cabinClass);
+    setTravelers({ adults: entry.passengers, children: 0, infants: 0 });
   }
 
   return (
@@ -141,6 +172,8 @@ export default function SearchForm() {
           </button>
         ))}
       </div>
+
+      {tripType !== "multi-city" && <RecentSearches onSelect={applyHistoryEntry} />}
 
       {tripType !== "multi-city" ? (
         <>
@@ -270,17 +303,7 @@ export default function SearchForm() {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-xs font-semibold text-slate-500 mb-1">Passengers</label>
-          <input
-            type="number"
-            min={1}
-            max={9}
-            value={passengers}
-            onChange={(e) => setPassengers(Number(e.target.value))}
-            className={inputClass}
-          />
-        </div>
+        <TravelerSelector value={travelers} onChange={setTravelers} />
         <div>
           <label className="block text-xs font-semibold text-slate-500 mb-1">Cabin class</label>
           <select

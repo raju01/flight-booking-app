@@ -46,4 +46,5 @@ export interface Passenger {
   lastName: string;
   dob: string;
   gender: string;
+  travelerType: "adult" | "child" | "infant";
 }

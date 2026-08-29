@@ -4,20 +4,45 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import FlightCard from "@/components/FlightCard";
 import FareCalendar from "@/components/FareCalendar";
+import NearbyAirportSuggestion from "@/components/NearbyAirportSuggestion";
 import { generateMockFlights } from "@/lib/mockFlights";
 import { lowestEmissionsId } from "@/lib/emissions";
 import { layoverMinutes } from "@/lib/layover";
+import { addFareAlert, findFareAlert, removeFareAlert } from "@/lib/fareAlerts";
+import { BellIcon } from "@/components/icons";
 import { findAirport, formatAirport } from "@/lib/airports";
 import { formatPrice } from "@/lib/currency";
 import { timeOfDayRange, TimeOfDay } from "@/lib/timeOfDay";
 import { PlaneIcon } from "@/components/icons";
 import { CabinClass, Flight } from "@/types/flight";
 import { MultiCityLeg } from "@/types/multiCity";
+import { TravelerCounts, totalTravelers } from "@/types/traveler";
 
 type StopsFilter = "any" | "nonstop" | "1stop";
 type TimeOfDayFilter = "any" | TimeOfDay;
 type LayoverFilter = "any" | "short" | "medium" | "long";
 type SortBy = "best" | "price" | "duration";
+
+function formatTravelerSummary(travelers: TravelerCounts): string {
+  const total = totalTravelers(travelers);
+  const extras = [
+    travelers.children > 0 ? `${travelers.children} child${travelers.children > 1 ? "ren" : ""}` : null,
+    travelers.infants > 0 ? `${travelers.infants} infant${travelers.infants > 1 ? "s" : ""}` : null,
+  ].filter(Boolean);
+  const base = `${total} passenger${total > 1 ? "s" : ""}`;
+  return extras.length > 0 ? `${base} (${extras.join(", ")})` : base;
+}
+
+function readTravelerCounts(searchParams: URLSearchParams): TravelerCounts {
+  const adults = Number(searchParams.get("adults") ?? searchParams.get("passengers") ?? "1");
+  const children = Number(searchParams.get("children") ?? "0");
+  const infants = Number(searchParams.get("infants") ?? "0");
+  return {
+    adults: Number.isFinite(adults) && adults > 0 ? adults : 1,
+    children: Number.isFinite(children) && children > 0 ? children : 0,
+    infants: Number.isFinite(infants) && infants > 0 ? infants : 0,
+  };
+}
 
 function SearchResults() {
   const router = useRouter();
@@ -27,7 +52,7 @@ function SearchResults() {
   const to = searchParams.get("to") ?? "";
   const departDate = searchParams.get("departDate") ?? "";
   const returnDate = searchParams.get("returnDate") ?? undefined;
-  const passengers = Number(searchParams.get("passengers") ?? "1");
+  const travelers = readTravelerCounts(searchParams);
   const cabinClass = (searchParams.get("cabinClass") as CabinClass) ?? "Economy";
   const tripType = searchParams.get("tripType") ?? "one-way";
 
@@ -41,6 +66,14 @@ function SearchResults() {
   const searchKey = `${from}|${to}|${departDate}|${returnDate}|${cabinClass}`;
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const isLoading = loadedKey !== searchKey;
+  const [alertSaved, setAlertSaved] = useState(false);
+
+  useEffect(() => {
+    if (!from || !to || !departDate) return;
+    // Reads localStorage (unavailable during SSR) after mount to avoid a hydration mismatch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAlertSaved(Boolean(findFareAlert(from, to, departDate, cabinClass)));
+  }, [from, to, departDate, cabinClass]);
 
   const outboundFlights = useMemo(
     () => generateMockFlights({ from, to, date: departDate, cabinClass }),
@@ -107,7 +140,7 @@ function SearchResults() {
     sessionStorage.setItem(key, JSON.stringify(flight));
     sessionStorage.setItem(
       "bookingMeta",
-      JSON.stringify({ passengers, cabinClass, tripType })
+      JSON.stringify({ travelers, cabinClass, tripType })
     );
 
     if (tripType === "round-trip" && direction === "outbound") {
@@ -121,6 +154,17 @@ function SearchResults() {
     const params = new URLSearchParams(searchParams.toString());
     params.set(field, newDate);
     router.push(`/search?${params.toString()}`);
+  }
+
+  function toggleFareAlert() {
+    if (alertSaved) {
+      removeFareAlert(`${from}-${to}-${departDate}-${cabinClass}`);
+      setAlertSaved(false);
+      return;
+    }
+    const lowest = outboundFlights.length ? Math.min(...outboundFlights.map((f) => f.price)) : 0;
+    addFareAlert(from, to, departDate, cabinClass, lowest);
+    setAlertSaved(true);
   }
 
   function resetFilters() {
@@ -163,11 +207,23 @@ function SearchResults() {
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             {departDate}
-            {returnDate ? ` – ${returnDate}` : ""} · {passengers} passenger
-            {passengers > 1 ? "s" : ""} · {cabinClass}
+            {returnDate ? ` – ${returnDate}` : ""} · {formatTravelerSummary(travelers)} ·{" "}
+            {cabinClass}
           </p>
         </div>
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-3 text-sm">
+          <button
+            type="button"
+            onClick={toggleFareAlert}
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold transition-all cursor-pointer ${
+              alertSaved
+                ? "bg-amber-100 text-amber-700"
+                : "border-2 border-slate-200 bg-white text-slate-600 hover:border-amber-300"
+            }`}
+          >
+            <BellIcon className="w-4 h-4" filled={alertSaved} />
+            {alertSaved ? "Alert set" : "Set price alert"}
+          </button>
           <span className="text-slate-500 font-medium">Sort by</span>
           <select
             value={sortBy}
@@ -285,6 +341,17 @@ function SearchResults() {
         </aside>
 
         <div className="flex-1 min-w-0">
+          {tripType !== "multi-city" && (
+            <NearbyAirportSuggestion
+              from={from}
+              to={to}
+              date={departDate}
+              cabinClass={cabinClass}
+              currentLowestPrice={
+                outboundFlights.length ? Math.min(...outboundFlights.map((f) => f.price)) : null
+              }
+            />
+          )}
           <section className="mb-10">
             <h2 className="text-lg font-bold text-slate-900 mb-3">
               {tripType === "round-trip" ? "Outbound flights" : "Available flights"}
@@ -338,7 +405,8 @@ function MultiCityResults() {
   const searchParams = useSearchParams();
 
   const legsParam = searchParams.get("legs") ?? "[]";
-  const passengers = Number(searchParams.get("passengers") ?? "1");
+  const travelers = readTravelerCounts(searchParams);
+  const passengers = totalTravelers(travelers);
   const cabinClass = (searchParams.get("cabinClass") as CabinClass) ?? "Economy";
 
   const legs: MultiCityLeg[] = useMemo(() => {
@@ -381,9 +449,14 @@ function MultiCityResults() {
   useEffect(() => {
     if (legs.length > 0 && selectedFlights.every((f) => f !== null)) {
       sessionStorage.setItem("selectedLegs", JSON.stringify(selectedFlights));
-      sessionStorage.setItem("bookingMeta", JSON.stringify({ passengers, cabinClass, tripType: "multi-city" }));
+      sessionStorage.setItem(
+        "bookingMeta",
+        JSON.stringify({ travelers, cabinClass, tripType: "multi-city" })
+      );
       router.push("/book");
     }
+    // travelers is derived fresh from searchParams each render; depending on passengers (its total) is sufficient.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFlights, legs.length, passengers, cabinClass, router]);
 
   if (legs.length === 0) {
@@ -407,7 +480,7 @@ function MultiCityResults() {
         <PlaneIcon className="w-5 h-5 text-fuchsia-500" />
       </h1>
       <p className="text-sm text-slate-500 mb-6">
-        {legs.length} flights · {passengers} passenger{passengers > 1 ? "s" : ""} · {cabinClass}
+        {legs.length} flights · {formatTravelerSummary(travelers)} · {cabinClass}
       </p>
 
       <div className="flex flex-col gap-10">

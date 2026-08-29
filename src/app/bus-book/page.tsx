@@ -16,7 +16,7 @@ const inputClass =
   "border-2 border-slate-200 rounded-2xl px-4 py-2.5 bg-white/70 transition-colors focus:outline-none focus:border-emerald-400 focus:bg-white";
 
 function emptyPassenger(): Passenger {
-  return { firstName: "", lastName: "", dob: "", gender: "Male" };
+  return { firstName: "", lastName: "", dob: "", gender: "Male", travelerType: "adult" };
 }
 
 function loadBooking() {

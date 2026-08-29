@@ -153,6 +153,11 @@ function TicketStub({
               {passengers.map((p, i) => (
                 <p key={i} className="text-sm font-semibold text-slate-800">
                   {p.firstName} {p.lastName}
+                  {p.travelerType !== "adult" && (
+                    <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-500 bg-slate-100 rounded-full px-1.5 py-0.5">
+                      {p.travelerType}
+                    </span>
+                  )}
                   {seatIds?.[i] && (
                     <span className="ml-1.5 text-xs font-medium text-indigo-600">
                       Seat {seatIds[i]}

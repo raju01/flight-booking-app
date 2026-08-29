@@ -14,9 +14,14 @@ import { GstDetails } from "@/types/gst";
 import { isValidGstin } from "@/lib/gst";
 import { pointsForBooking, addLoyaltyTransaction } from "@/lib/loyalty";
 import { StarIcon } from "@/components/icons";
+import { saveBooking } from "@/lib/bookings";
+import { TravelerCounts, TravelerType, travelerTypeList } from "@/types/traveler";
+import { travelerFare, hasOwnSeat } from "@/lib/travelerFare";
+import { BAGGAGE_ADDON_OPTIONS, BaggageAddonKg, baggageAddonPrice } from "@/lib/baggageAddon";
+import { useAuth } from "@/context/AuthContext";
 
 interface BookingMeta {
-  passengers: number;
+  travelers: TravelerCounts;
   cabinClass: string;
   tripType: "one-way" | "round-trip" | "multi-city";
 }
@@ -24,8 +29,8 @@ interface BookingMeta {
 const inputClass =
   "border-2 border-slate-200 rounded-2xl px-4 py-2.5 bg-white/70 transition-colors focus:outline-none focus:border-indigo-400 focus:bg-white";
 
-function emptyPassenger(): Passenger {
-  return { firstName: "", lastName: "", dob: "", gender: "Male" };
+function emptyPassenger(travelerType: TravelerType): Passenger {
+  return { firstName: "", lastName: "", dob: "", gender: "Male", travelerType };
 }
 
 type CheckInState = "too-early" | "open" | "closed";
@@ -73,13 +78,14 @@ const WALLET_BALANCE = 12500;
 
 export default function BookPage() {
   const router = useRouter();
+  const { user, isReady: authReady } = useAuth();
   const [booking] = useState(loadBooking);
   const outbound = booking?.outbound ?? null;
   const returnFlight = booking?.returnFlight ?? null;
   const legs = booking?.legs ?? null;
   const meta = booking?.meta ?? null;
   const [passengers, setPassengers] = useState<Passenger[]>(() =>
-    booking ? Array.from({ length: booking.meta.passengers }, emptyPassenger) : []
+    booking ? travelerTypeList(booking.meta.travelers).map((t) => emptyPassenger(t)) : []
   );
   const [step, setStep] = useState<Step>("details");
   const [confirmationCode, setConfirmationCode] = useState("");
@@ -87,6 +93,8 @@ export default function BookPage() {
   const [activeLegForSeats, setActiveLegForSeats] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [upiId, setUpiId] = useState("");
+  const [splitPayment, setSplitPayment] = useState(false);
+  const [paidShares, setPaidShares] = useState<Set<number>>(new Set());
   const [wantsGstInvoice, setWantsGstInvoice] = useState(false);
   const [gstDetails, setGstDetails] = useState<GstDetails>({
     gstin: "",
@@ -96,10 +104,25 @@ export default function BookPage() {
   const [gstinError, setGstinError] = useState("");
   const [confirmedGstDetails, setConfirmedGstDetails] = useState<GstDetails | null>(null);
   const [pointsEarned, setPointsEarned] = useState(0);
+  const [extraBaggage, setExtraBaggage] = useState<Record<number, BaggageAddonKg>>({});
 
   useEffect(() => {
     if (!booking) router.push("/");
   }, [booking, router]);
+
+  useEffect(() => {
+    if (!authReady || !user) return;
+    const [firstName, ...rest] = user.name.trim().split(" ");
+    // Prefills from the signed-in account (an external system) once auth resolves after
+    // mount; only touches an untouched first passenger so it never clobbers user edits.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPassengers((prev) => {
+      if (prev.length === 0 || prev[0].firstName || prev[0].lastName) return prev;
+      const copy = [...prev];
+      copy[0] = { ...copy[0], firstName, lastName: rest.join(" ") };
+      return copy;
+    });
+  }, [authReady, user]);
 
   const flightLegs = useMemo<Flight[]>(() => {
     if (legs) return legs;
@@ -112,30 +135,54 @@ export default function BookPage() {
     for (let legIndex = 0; legIndex < flightLegs.length; legIndex++) {
       const layout = generateSeatLayout(flightLegs[legIndex].id, flightLegs[legIndex].cabinClass);
       for (let p = 0; p < passengers.length; p++) {
+        if (!hasOwnSeat(passengers[p].travelerType)) continue;
         const seatId = seatSelections[`${legIndex}-${p}`];
         const seat = layout.seats.find((s) => s.id === seatId);
         if (seat) sum += seat.priceDelta;
       }
     }
     return sum;
-  }, [flightLegs, passengers.length, seatSelections]);
+  }, [flightLegs, passengers, seatSelections]);
 
-  const totalPrice = useMemo(() => {
-    if (!meta) return 0;
-    if (legs) return legs.reduce((sum, f) => sum + f.price, 0) * meta.passengers + seatPriceTotal;
-    if (!outbound) return 0;
-    const base = (outbound.price + (returnFlight?.price ?? 0)) * meta.passengers;
-    return base + seatPriceTotal;
-  }, [outbound, returnFlight, legs, meta, seatPriceTotal]);
+  const fareTotal = useMemo(() => {
+    const legFares = flightLegs.map((f) => f.price);
+    return passengers.reduce((sum, p) => {
+      const passengerFare = legFares.reduce(
+        (legSum, price) => legSum + travelerFare(price, p.travelerType),
+        0
+      );
+      return sum + passengerFare;
+    }, 0);
+  }, [flightLegs, passengers]);
+
+  const baggageAddonTotal = useMemo(
+    () =>
+      passengers.reduce(
+        (sum, _, i) => sum + baggageAddonPrice(extraBaggage[i] ?? 0),
+        0
+      ),
+    [passengers, extraBaggage]
+  );
+
+  const totalPrice = fareTotal + seatPriceTotal + baggageAddonTotal;
+
+  const adultIndices = useMemo(
+    () => passengers.map((p, i) => (p.travelerType === "adult" ? i : -1)).filter((i) => i !== -1),
+    [passengers]
+  );
+  const canSplitPayment = adultIndices.length > 1;
+  const shareAmount = canSplitPayment ? Math.ceil(totalPrice / adultIndices.length) : totalPrice;
+  const allSharesPaid = !splitPayment || adultIndices.every((i) => paidShares.has(i));
 
   const allSeatsAssigned = useMemo(() => {
     for (let legIndex = 0; legIndex < flightLegs.length; legIndex++) {
       for (let p = 0; p < passengers.length; p++) {
+        if (!hasOwnSeat(passengers[p].travelerType)) continue;
         if (!seatSelections[`${legIndex}-${p}`]) return false;
       }
     }
     return flightLegs.length > 0 && passengers.length > 0;
-  }, [flightLegs.length, passengers.length, seatSelections]);
+  }, [flightLegs.length, passengers, seatSelections]);
 
   function updatePassenger(index: number, field: keyof Passenger, value: string) {
     setPassengers((prev) => {
@@ -147,6 +194,14 @@ export default function BookPage() {
 
   function selectSeat(legIndex: number, passengerIndex: number, seatId: string) {
     setSeatSelections((prev) => ({ ...prev, [`${legIndex}-${passengerIndex}`]: seatId }));
+  }
+
+  function markSharePaid(passengerIndex: number) {
+    setPaidShares((prev) => new Set(prev).add(passengerIndex));
+  }
+
+  function setBaggageAddon(passengerIndex: number, kg: BaggageAddonKg) {
+    setExtraBaggage((prev) => ({ ...prev, [passengerIndex]: kg }));
   }
 
   function handleDetailsSubmit(e: React.FormEvent) {
@@ -166,11 +221,25 @@ export default function BookPage() {
     e.preventDefault();
     const code = `BK${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
     setConfirmationCode(code);
-    setConfirmedGstDetails(wantsGstInvoice ? gstDetails : null);
+    const gstForBooking = wantsGstInvoice ? gstDetails : null;
+    setConfirmedGstDetails(gstForBooking);
 
     const earned = pointsForBooking(totalPrice);
     setPointsEarned(earned);
     addLoyaltyTransaction(`Booking ${code}`, earned);
+
+    saveBooking({
+      confirmationCode: code,
+      createdAt: new Date().toISOString(),
+      status: "confirmed",
+      outbound: outbound ?? undefined,
+      returnFlight,
+      legs,
+      passengers,
+      seatSelections,
+      totalPrice,
+      gstDetails: gstForBooking,
+    });
 
     setStep("confirmed");
     sessionStorage.removeItem("selectedOutbound");
@@ -191,6 +260,7 @@ export default function BookPage() {
         returnFlight={returnFlight}
         legs={legs}
         totalPrice={totalPrice}
+        baggageAddonTotal={baggageAddonTotal}
       />
 
       {step === "details" && (
@@ -201,8 +271,13 @@ export default function BookPage() {
               key={i}
               className="glass-card rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-3"
             >
-              <p className="sm:col-span-2 text-sm font-bold text-indigo-600">
+              <p className="sm:col-span-2 text-sm font-bold text-indigo-600 flex items-center gap-2">
                 Passenger {i + 1}
+                {p.travelerType !== "adult" && (
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500 bg-slate-100 rounded-full px-2 py-0.5">
+                    {p.travelerType}
+                  </span>
+                )}
               </p>
               <input
                 required
@@ -234,6 +309,31 @@ export default function BookPage() {
                 <option>Female</option>
                 <option>Other</option>
               </select>
+
+              {p.travelerType !== "infant" && (
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">
+                    Extra check-in baggage
+                    {(extraBaggage[i] ?? 0) > 0 && (
+                      <span className="text-indigo-600 font-bold">
+                        {" "}
+                        · +{formatPrice(baggageAddonPrice(extraBaggage[i]!))}
+                      </span>
+                    )}
+                  </label>
+                  <select
+                    value={extraBaggage[i] ?? 0}
+                    onChange={(e) => setBaggageAddon(i, Number(e.target.value) as BaggageAddonKg)}
+                    className={`${inputClass} cursor-pointer`}
+                  >
+                    {BAGGAGE_ADDON_OPTIONS.map((kg) => (
+                      <option key={kg} value={kg}>
+                        {kg === 0 ? "None" : `+${kg}kg (${formatPrice(baggageAddonPrice(kg))})`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           ))}
 
@@ -299,10 +399,15 @@ export default function BookPage() {
       {step === "seats" && (
         <div className="mt-8 flex flex-col gap-6">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <SeatIcon className="w-5 h-5 text-fuchsia-500" />
-              Choose your seats
-            </h2>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <SeatIcon className="w-5 h-5 text-fuchsia-500" />
+                Choose your seats
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Optional — skip to get a random seat assigned at check-in.
+              </p>
+            </div>
             {seatPriceTotal > 0 && (
               <span className="text-sm font-semibold text-indigo-600">
                 +{formatPrice(seatPriceTotal)} for seats
@@ -338,6 +443,14 @@ export default function BookPage() {
 
             <div className="flex flex-col gap-6">
               {passengers.map((p, passengerIndex) => {
+                if (!hasOwnSeat(p.travelerType)) {
+                  return (
+                    <p key={passengerIndex} className="text-sm text-slate-400">
+                      {p.firstName || `Passenger ${passengerIndex + 1}`} (infant) travels on an
+                      adult&apos;s lap — no seat needed.
+                    </p>
+                  );
+                }
                 const key = `${activeLegForSeats}-${passengerIndex}`;
                 const otherSelections = Object.entries(seatSelections)
                   .filter(([k]) => k.startsWith(`${activeLegForSeats}-`) && k !== key)
@@ -365,14 +478,26 @@ export default function BookPage() {
             </div>
           </div>
 
-          <button
-            type="button"
-            disabled={!allSeatsAssigned}
-            onClick={() => setStep("payment")}
-            className="bg-gradient-to-r from-indigo-600 to-fuchsia-500 hover:shadow-xl hover:shadow-violet-300/50 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-full px-6 py-3.5 self-start transition-all cursor-pointer"
-          >
-            Continue to payment
-          </button>
+          <div className="flex items-center gap-4 flex-wrap">
+            <button
+              type="button"
+              disabled={!allSeatsAssigned}
+              onClick={() => setStep("payment")}
+              className="bg-gradient-to-r from-indigo-600 to-fuchsia-500 hover:shadow-xl hover:shadow-violet-300/50 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-full px-6 py-3.5 transition-all cursor-pointer"
+            >
+              Continue to payment
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSeatSelections({});
+                setStep("payment");
+              }}
+              className="text-sm font-semibold text-slate-500 hover:text-slate-700 underline cursor-pointer"
+            >
+              Skip seat selection
+            </button>
+          </div>
         </div>
       )}
 
@@ -383,6 +508,62 @@ export default function BookPage() {
             This is a demo checkout. No real payment is processed.
           </p>
 
+          {canSplitPayment && (
+            <label className="glass-card rounded-2xl p-4 flex items-center justify-between gap-3 cursor-pointer">
+              <div>
+                <p className="text-sm font-bold text-slate-800">Split payment</p>
+                <p className="text-xs text-slate-500">
+                  Divide {formatPrice(totalPrice)} evenly across {adultIndices.length} adult
+                  passengers.
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                checked={splitPayment}
+                onChange={(e) => {
+                  setSplitPayment(e.target.checked);
+                  setPaidShares(new Set());
+                }}
+                className="accent-indigo-600 w-4 h-4 cursor-pointer shrink-0"
+              />
+            </label>
+          )}
+
+          {splitPayment ? (
+            <div className="glass-card rounded-2xl p-4 flex flex-col gap-3">
+              {adultIndices.map((passengerIndex) => {
+                const p = passengers[passengerIndex];
+                const isPaid = paidShares.has(passengerIndex);
+                return (
+                  <div
+                    key={passengerIndex}
+                    className="flex items-center justify-between gap-3 py-2 border-b border-slate-100 last:border-0"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">
+                        {p.firstName || `Passenger ${passengerIndex + 1}`}
+                      </p>
+                      <p className="text-xs text-slate-500">{formatPrice(shareAmount)} share</p>
+                    </div>
+                    {isPaid ? (
+                      <span className="text-xs font-bold text-emerald-600 bg-emerald-50 rounded-full px-3 py-1.5">
+                        Paid
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => markSharePaid(passengerIndex)}
+                        className="bg-gradient-to-r from-indigo-600 to-fuchsia-500 hover:shadow-lg hover:shadow-violet-300/50 text-white text-xs font-bold rounded-full px-4 py-2 transition-all cursor-pointer whitespace-nowrap"
+                      >
+                        Pay {formatPrice(shareAmount)}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <>
           <div className="flex gap-2">
             {(
               [
@@ -462,13 +643,15 @@ export default function BookPage() {
               Insufficient wallet balance for this booking. Choose Card or UPI instead.
             </p>
           )}
+            </>
+          )}
 
           <button
             type="submit"
-            disabled={paymentMethod === "wallet" && totalPrice > WALLET_BALANCE}
+            disabled={!allSharesPaid || (paymentMethod === "wallet" && totalPrice > WALLET_BALANCE)}
             className="bg-gradient-to-r from-indigo-600 to-fuchsia-500 hover:shadow-xl hover:shadow-violet-300/50 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-full px-6 py-3.5 transition-all cursor-pointer"
           >
-            Pay {formatPrice(totalPrice)}
+            {splitPayment ? "Confirm booking" : `Pay ${formatPrice(totalPrice)}`}
           </button>
         </form>
       )}
@@ -636,11 +819,13 @@ function FlightSummary({
   returnFlight,
   legs,
   totalPrice,
+  baggageAddonTotal,
 }: {
   outbound: Flight | null;
   returnFlight: Flight | null;
   legs: Flight[] | null;
   totalPrice: number;
+  baggageAddonTotal?: number;
 }) {
   return (
     <div className="glass-card rounded-2xl p-5">
@@ -653,6 +838,12 @@ function FlightSummary({
               {returnFlight && <SegmentRow flight={returnFlight} label="Return" />}
             </>
           )}
+      {Boolean(baggageAddonTotal) && (
+        <div className="flex justify-between text-sm py-2 border-b border-slate-100 text-slate-500">
+          <span>Extra baggage</span>
+          <span className="font-semibold text-slate-700">{formatPrice(baggageAddonTotal!)}</span>
+        </div>
+      )}
       <div className="border-t border-slate-200 mt-3 pt-3 flex justify-between items-center">
         <span className="text-sm text-slate-500 font-medium">Total price</span>
         <span className="text-xl font-extrabold gradient-text [--gradient-from:theme(colors.indigo.600)] [--gradient-to:theme(colors.fuchsia.500)]">
