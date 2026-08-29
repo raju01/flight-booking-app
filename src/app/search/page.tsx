@@ -3,15 +3,21 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import FlightCard from "@/components/FlightCard";
+import FareCalendar from "@/components/FareCalendar";
 import { generateMockFlights } from "@/lib/mockFlights";
+import { lowestEmissionsId } from "@/lib/emissions";
+import { layoverMinutes } from "@/lib/layover";
 import { findAirport, formatAirport } from "@/lib/airports";
 import { formatPrice } from "@/lib/currency";
 import { timeOfDayRange, TimeOfDay } from "@/lib/timeOfDay";
 import { PlaneIcon } from "@/components/icons";
 import { CabinClass, Flight } from "@/types/flight";
+import { MultiCityLeg } from "@/types/multiCity";
 
 type StopsFilter = "any" | "nonstop" | "1stop";
 type TimeOfDayFilter = "any" | TimeOfDay;
+type LayoverFilter = "any" | "short" | "medium" | "long";
+type SortBy = "best" | "price" | "duration";
 
 function SearchResults() {
   const router = useRouter();
@@ -25,12 +31,13 @@ function SearchResults() {
   const cabinClass = (searchParams.get("cabinClass") as CabinClass) ?? "Economy";
   const tripType = searchParams.get("tripType") ?? "one-way";
 
-  const [sortBy, setSortBy] = useState<"price" | "duration">("price");
+  const [sortBy, setSortBy] = useState<SortBy>("best");
   const [selectedOutboundId, setSelectedOutboundId] = useState<string | null>(null);
   const [stopsFilter, setStopsFilter] = useState<StopsFilter>("any");
   const [airlineFilter, setAirlineFilter] = useState<string>("any");
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [timeOfDayFilter, setTimeOfDayFilter] = useState<TimeOfDayFilter>("any");
+  const [layoverFilter, setLayoverFilter] = useState<LayoverFilter>("any");
   const searchKey = `${from}|${to}|${departDate}|${returnDate}|${cabinClass}`;
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const isLoading = loadedKey !== searchKey;
@@ -66,18 +73,30 @@ function SearchResults() {
   const sortedOutbound = useMemo(
     () =>
       sortFlights(
-        filterFlights(outboundFlights, { stopsFilter, airlineFilter, maxPrice, timeOfDayFilter }),
+        filterFlights(outboundFlights, {
+          stopsFilter,
+          airlineFilter,
+          maxPrice,
+          timeOfDayFilter,
+          layoverFilter,
+        }),
         sortBy
       ),
-    [outboundFlights, sortBy, stopsFilter, airlineFilter, maxPrice, timeOfDayFilter]
+    [outboundFlights, sortBy, stopsFilter, airlineFilter, maxPrice, timeOfDayFilter, layoverFilter]
   );
   const sortedReturn = useMemo(
     () =>
       sortFlights(
-        filterFlights(returnFlights, { stopsFilter, airlineFilter, maxPrice, timeOfDayFilter }),
+        filterFlights(returnFlights, {
+          stopsFilter,
+          airlineFilter,
+          maxPrice,
+          timeOfDayFilter,
+          layoverFilter,
+        }),
         sortBy
       ),
-    [returnFlights, sortBy, stopsFilter, airlineFilter, maxPrice, timeOfDayFilter]
+    [returnFlights, sortBy, stopsFilter, airlineFilter, maxPrice, timeOfDayFilter, layoverFilter]
   );
 
   const fromAirport = findAirport(from);
@@ -98,18 +117,26 @@ function SearchResults() {
     router.push("/book");
   }
 
+  function handleSelectDate(field: "departDate" | "returnDate", newDate: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set(field, newDate);
+    router.push(`/search?${params.toString()}`);
+  }
+
   function resetFilters() {
     setStopsFilter("any");
     setAirlineFilter("any");
     setMaxPrice(null);
     setTimeOfDayFilter("any");
+    setLayoverFilter("any");
   }
 
   const filtersActive =
     stopsFilter !== "any" ||
     airlineFilter !== "any" ||
     maxPrice !== null ||
-    timeOfDayFilter !== "any";
+    timeOfDayFilter !== "any" ||
+    layoverFilter !== "any";
 
   if (!fromAirport || !toAirport || !departDate) {
     return (
@@ -144,9 +171,10 @@ function SearchResults() {
           <span className="text-slate-500 font-medium">Sort by</span>
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as "price" | "duration")}
+            onChange={(e) => setSortBy(e.target.value as SortBy)}
             className="border-2 border-slate-200 rounded-full px-3 py-1.5 bg-white cursor-pointer focus:outline-none focus:border-indigo-400"
           >
+            <option value="best">Best</option>
             <option value="price">Price</option>
             <option value="duration">Duration</option>
           </select>
@@ -223,6 +251,22 @@ function SearchResults() {
               </select>
             </div>
 
+            {stopsFilter !== "nonstop" && (
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-slate-500 mb-2">Layover duration</p>
+                <select
+                  value={layoverFilter}
+                  onChange={(e) => setLayoverFilter(e.target.value as LayoverFilter)}
+                  className="w-full border-2 border-slate-200 rounded-xl px-2 py-1.5 text-sm bg-white cursor-pointer focus:outline-none focus:border-indigo-400"
+                >
+                  <option value="any">Any layover</option>
+                  <option value="short">Under 2h</option>
+                  <option value="medium">2h – 4h</option>
+                  <option value="long">4h+</option>
+                </select>
+              </div>
+            )}
+
             <div>
               <p className="text-xs font-semibold text-slate-500 mb-2">
                 Max price {maxPrice !== null ? `· ${formatPrice(maxPrice)}` : ""}
@@ -250,6 +294,13 @@ function SearchResults() {
                 Outbound flight selected. Now choose your return flight below.
               </p>
             )}
+            <FareCalendar
+              from={from}
+              to={to}
+              date={departDate}
+              cabinClass={cabinClass}
+              onSelectDate={(d) => handleSelectDate("departDate", d)}
+            />
             <FlightList
               flights={sortedOutbound}
               isLoading={isLoading}
@@ -258,9 +309,16 @@ function SearchResults() {
             />
           </section>
 
-          {tripType === "round-trip" && (
+          {tripType === "round-trip" && returnDate && (
             <section>
               <h2 className="text-lg font-bold text-slate-900 mb-3">Return flights</h2>
+              <FareCalendar
+                from={to}
+                to={from}
+                date={returnDate}
+                cabinClass={cabinClass}
+                onSelectDate={(d) => handleSelectDate("returnDate", d)}
+              />
               <FlightList
                 flights={sortedReturn}
                 isLoading={isLoading}
@@ -270,6 +328,135 @@ function SearchResults() {
             </section>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function MultiCityResults() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const legsParam = searchParams.get("legs") ?? "[]";
+  const passengers = Number(searchParams.get("passengers") ?? "1");
+  const cabinClass = (searchParams.get("cabinClass") as CabinClass) ?? "Economy";
+
+  const legs: MultiCityLeg[] = useMemo(() => {
+    try {
+      const parsed = JSON.parse(legsParam);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }, [legsParam]);
+
+  const [selectedFlights, setSelectedFlights] = useState<(Flight | null)[]>(() =>
+    legs.map(() => null)
+  );
+  const activeLegIndex = selectedFlights.findIndex((f) => f === null);
+
+  const searchKey = legsParam + cabinClass;
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const isLoading = loadedKey !== searchKey;
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoadedKey(searchKey), 550);
+    return () => clearTimeout(timer);
+  }, [searchKey]);
+
+  const legFlights = useMemo(
+    () =>
+      legs.map((leg) => generateMockFlights({ from: leg.from, to: leg.to, date: leg.date, cabinClass })),
+    [legs, cabinClass]
+  );
+
+  function handleSelect(legIndex: number, flight: Flight) {
+    setSelectedFlights((prev) => {
+      const copy = [...prev];
+      copy[legIndex] = flight;
+      return copy;
+    });
+  }
+
+  useEffect(() => {
+    if (legs.length > 0 && selectedFlights.every((f) => f !== null)) {
+      sessionStorage.setItem("selectedLegs", JSON.stringify(selectedFlights));
+      sessionStorage.setItem("bookingMeta", JSON.stringify({ passengers, cabinClass, tripType: "multi-city" }));
+      router.push("/book");
+    }
+  }, [selectedFlights, legs.length, passengers, cabinClass, router]);
+
+  if (legs.length === 0) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-16 text-center">
+        <p className="text-slate-600">Missing search details.</p>
+        <button
+          onClick={() => router.push("/")}
+          className="mt-4 text-indigo-600 font-semibold underline cursor-pointer"
+        >
+          Back to search
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-8">
+      <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 flex items-center gap-2 flex-wrap mb-1">
+        Multi-city trip
+        <PlaneIcon className="w-5 h-5 text-fuchsia-500" />
+      </h1>
+      <p className="text-sm text-slate-500 mb-6">
+        {legs.length} flights · {passengers} passenger{passengers > 1 ? "s" : ""} · {cabinClass}
+      </p>
+
+      <div className="flex flex-col gap-10">
+        {legs.map((leg, i) => {
+          const fromAirport = findAirport(leg.from);
+          const toAirport = findAirport(leg.to);
+          const isDone = selectedFlights[i] !== null;
+          const isActive = i === activeLegIndex;
+
+          return (
+            <section key={i} className={isActive || isDone ? "" : "opacity-40 pointer-events-none"}>
+              <div className="flex items-center gap-3 mb-3">
+                <span
+                  className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold shrink-0 ${
+                    isDone
+                      ? "bg-gradient-to-br from-emerald-500 to-teal-400 text-white"
+                      : isActive
+                        ? "bg-gradient-to-br from-indigo-600 to-fuchsia-500 text-white"
+                        : "bg-slate-100 text-slate-400"
+                  }`}
+                >
+                  {isDone ? "✓" : i + 1}
+                </span>
+                <h2 className="text-lg font-bold text-slate-900">
+                  {fromAirport ? formatAirport(fromAirport) : leg.from} →{" "}
+                  {toAirport ? formatAirport(toAirport) : leg.to}
+                </h2>
+                <span className="text-sm text-slate-500">{leg.date}</span>
+              </div>
+
+              {isDone && selectedFlights[i] && (
+                <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-2.5 mb-3 font-medium">
+                  Selected: {selectedFlights[i]!.segments[0].airline}{" "}
+                  {selectedFlights[i]!.segments[0].flightNumber} ·{" "}
+                  {formatPrice(selectedFlights[i]!.price)}
+                </p>
+              )}
+
+              {(isActive || isDone) && (
+                <FlightList
+                  flights={legFlights[i]}
+                  isLoading={isLoading}
+                  selectedId={selectedFlights[i]?.id ?? null}
+                  onSelect={(f) => handleSelect(i, f)}
+                />
+              )}
+            </section>
+          );
+        })}
       </div>
     </div>
   );
@@ -310,6 +497,8 @@ function FlightList({
     );
   }
 
+  const greenestId = lowestEmissionsId(flights);
+
   return (
     <div className="flex flex-col gap-3">
       {flights.map((f, i) => (
@@ -317,6 +506,7 @@ function FlightList({
           key={f.id}
           flight={f}
           selected={f.id === selectedId}
+          isGreenest={f.id === greenestId}
           onSelect={onSelect}
           style={{ animationDelay: `${i * 60}ms` }}
         />
@@ -332,6 +522,7 @@ function filterFlights(
     airlineFilter: string;
     maxPrice: number | null;
     timeOfDayFilter: TimeOfDayFilter;
+    layoverFilter?: LayoverFilter;
   }
 ) {
   return flights.filter((f) => {
@@ -346,16 +537,51 @@ function filterFlights(
       const inRange = start < end ? hour >= start && hour < end : hour >= start || hour < end;
       if (!inRange) return false;
     }
+    if (filters.layoverFilter && filters.layoverFilter !== "any") {
+      const minutes = layoverMinutes(f);
+      if (minutes === null) return false;
+      if (filters.layoverFilter === "short" && minutes >= 120) return false;
+      if (filters.layoverFilter === "medium" && (minutes < 120 || minutes >= 240)) return false;
+      if (filters.layoverFilter === "long" && minutes < 240) return false;
+    }
     return true;
   });
 }
 
-function sortFlights(flights: Flight[], sortBy: "price" | "duration") {
+function bestScore(flight: Flight, priceRange: [number, number], durationRange: [number, number]) {
+  const [minPrice, maxPrice] = priceRange;
+  const [minDuration, maxDuration] = durationRange;
+  const priceScore = maxPrice > minPrice ? (flight.price - minPrice) / (maxPrice - minPrice) : 0;
+  const durationScore =
+    maxDuration > minDuration
+      ? (flight.segments[0].durationMinutes - minDuration) / (maxDuration - minDuration)
+      : 0;
+  const stopsScore = flight.stops > 0 ? 1 : 0;
+  return priceScore * 0.5 + durationScore * 0.35 + stopsScore * 0.15;
+}
+
+function sortFlights(flights: Flight[], sortBy: SortBy) {
   const copy = [...flights];
   if (sortBy === "price") return copy.sort((a, b) => a.price - b.price);
+  if (sortBy === "duration") {
+    return copy.sort((a, b) => a.segments[0].durationMinutes - b.segments[0].durationMinutes);
+  }
+
+  if (copy.length === 0) return copy;
+  const prices = copy.map((f) => f.price);
+  const durations = copy.map((f) => f.segments[0].durationMinutes);
+  const priceRange: [number, number] = [Math.min(...prices), Math.max(...prices)];
+  const durationRange: [number, number] = [Math.min(...durations), Math.max(...durations)];
   return copy.sort(
-    (a, b) => a.segments[0].durationMinutes - b.segments[0].durationMinutes
+    (a, b) => bestScore(a, priceRange, durationRange) - bestScore(b, priceRange, durationRange)
   );
+}
+
+function SearchDispatch() {
+  const searchParams = useSearchParams();
+  const tripType = searchParams.get("tripType") ?? "one-way";
+  if (tripType === "multi-city") return <MultiCityResults />;
+  return <SearchResults />;
 }
 
 export default function SearchPage() {
@@ -363,7 +589,7 @@ export default function SearchPage() {
     <Suspense
       fallback={<div className="px-4 py-16 text-center text-slate-500">Loading…</div>}
     >
-      <SearchResults />
+      <SearchDispatch />
     </Suspense>
   );
 }

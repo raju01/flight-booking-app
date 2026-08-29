@@ -1,3 +1,5 @@
+import { FareTier } from "@/types/fareTier";
+
 export type CabinClass = "Economy" | "Premium Economy" | "Business" | "First";
 
 export interface Airport {
@@ -25,6 +27,8 @@ export interface Flight {
   currency: string;
   cabinClass: CabinClass;
   seatsLeft: number;
+  fareTier?: FareTier;
+  priceLocked?: boolean;
 }
 
 export interface SearchParams {

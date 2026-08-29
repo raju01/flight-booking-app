@@ -40,7 +40,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 Sky<span className="gradient-text [--gradient-from:theme(colors.indigo.600)] [--gradient-to:theme(colors.fuchsia.500)]">Book</span>
               </span>
             </Link>
-            <nav className="hidden sm:flex items-center gap-1 text-sm font-medium text-slate-500">
+            <nav className="hidden sm:flex items-center gap-4 text-sm font-medium text-slate-500">
+              <Link href="/explore" className="hover:text-indigo-600 transition-colors">
+                Explore
+              </Link>
+              <Link href="/status" className="hover:text-indigo-600 transition-colors">
+                Flight status
+              </Link>
+              <Link href="/rewards" className="hover:text-indigo-600 transition-colors">
+                Rewards
+              </Link>
               <span className="px-3 py-1.5 rounded-full bg-slate-900/5">Demo booking experience</span>
             </nav>
           </div>

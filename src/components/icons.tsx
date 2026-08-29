@@ -101,6 +101,19 @@ export function StarIcon({ className = "w-3.5 h-3.5", filled = true }: { classNa
   );
 }
 
+export function GripIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <circle cx="9" cy="6" r="1.4" fill="currentColor" />
+      <circle cx="15" cy="6" r="1.4" fill="currentColor" />
+      <circle cx="9" cy="12" r="1.4" fill="currentColor" />
+      <circle cx="15" cy="12" r="1.4" fill="currentColor" />
+      <circle cx="9" cy="18" r="1.4" fill="currentColor" />
+      <circle cx="15" cy="18" r="1.4" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function ChevronIcon({ className = "w-4 h-4" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className}>
@@ -141,6 +154,63 @@ export function CheckCircleIcon({ className = "w-6 h-6" }: { className?: string 
     <svg viewBox="0 0 24 24" fill="none" className={className}>
       <circle cx="12" cy="12" r="9.5" stroke="currentColor" strokeWidth="1.6" />
       <path d="M8 12.5l2.5 2.5 5.5-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function CardIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <rect x="2.5" y="5" width="19" height="14" rx="2.2" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M2.5 9.5h19" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M6 14.5h5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function QrCodeIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.6" />
+      <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.6" />
+      <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1.6" />
+      <rect x="14.5" y="14.5" width="2.5" height="2.5" fill="currentColor" />
+      <rect x="18.5" y="14.5" width="2.5" height="2.5" fill="currentColor" />
+      <rect x="14.5" y="18.5" width="2.5" height="2.5" fill="currentColor" />
+      <rect x="18.5" y="18.5" width="2.5" height="2.5" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function LeafIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M5 19c-1-6 2-13 14-14 1 12-6 15-14 14Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path d="M6 18c3-4 6-7 12-11.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function ClockIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <circle cx="12" cy="12" r="9.5" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M12 7v5.3l3.5 2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function WalletIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <rect x="2.5" y="6" width="19" height="13" rx="2.2" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M2.5 6a2.2 2.2 0 0 1 2.2-2.2h11.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="17" cy="13" r="1.5" fill="currentColor" />
     </svg>
   );
 }

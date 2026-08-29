@@ -3,6 +3,7 @@
 import { useState } from "react";
 import SearchForm from "@/components/SearchForm";
 import BusSearchForm from "@/components/BusSearchForm";
+import FareTicker from "@/components/FareTicker";
 import { PlaneIcon, BusIcon } from "@/components/icons";
 
 type Mode = "flights" | "bus";
@@ -54,7 +55,7 @@ export default function Home() {
           style={{ animationDelay: "8s" }}
         />
 
-        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-16 sm:py-24">
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-10 sm:pb-14">
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider bg-white/15 border border-white/20 rounded-full px-3 py-1 mb-4">
             Fast · Simple · Yours
           </span>
@@ -63,6 +64,12 @@ export default function Home() {
           </h1>
           <p className="mt-3 text-white/85 text-lg max-w-md">{hero.subtitle}</p>
         </div>
+
+        {mode === "flights" && (
+          <div className="relative pb-16 sm:pb-20">
+            <FareTicker />
+          </div>
+        )}
       </section>
 
       <section className="relative max-w-5xl mx-auto w-full px-4 sm:px-6 -mt-12 sm:-mt-16 pb-20">

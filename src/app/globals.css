@@ -47,6 +47,19 @@ body {
   100% { background-position: 200% 0; }
 }
 
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.marquee-track {
+  animation: marquee 32s linear infinite;
+}
+
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
 .flight-card-enter {
   animation: fadeInUp 0.35s ease-out both;
 }

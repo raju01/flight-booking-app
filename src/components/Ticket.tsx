@@ -1,8 +1,10 @@
 "use client";
 
 import { Flight, Passenger } from "@/types/flight";
+import { SeatSelectionMap } from "@/types/seat";
 import { formatPrice } from "@/lib/currency";
 import { PlaneIcon } from "@/components/icons";
+import RouteMap from "@/components/RouteMap";
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -33,14 +35,17 @@ function TicketStub({
   label,
   passengers,
   confirmationCode,
+  seatIds,
 }: {
   flight: Flight;
   label: string;
   passengers: Passenger[];
   confirmationCode: string;
+  seatIds?: (string | undefined)[];
 }) {
   const segment = flight.segments[0];
   const bars = barcodeBars(`${confirmationCode}-${segment.flightNumber}`);
+  const primarySeat = seatIds?.[0];
 
   return (
     <div className="ticket-stub relative bg-white rounded-3xl overflow-hidden shadow-xl shadow-indigo-100 border border-slate-100 flex flex-col sm:flex-row print:shadow-none print:border-slate-300 print:rounded-none print:break-inside-avoid">
@@ -55,9 +60,21 @@ function TicketStub({
               <p className="text-xs text-slate-500">{segment.flightNumber}</p>
             </div>
           </div>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 rounded-full px-2.5 py-1">
-            {label}
-          </span>
+          <div className="flex items-center gap-1.5">
+            {flight.fareTier && (
+              <span className="text-[10px] font-bold uppercase tracking-wider text-fuchsia-600 bg-fuchsia-50 rounded-full px-2.5 py-1">
+                {flight.fareTier.name}
+              </span>
+            )}
+            {flight.priceLocked && (
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 rounded-full px-2.5 py-1">
+                Price locked
+              </span>
+            )}
+            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 rounded-full px-2.5 py-1">
+              {label}
+            </span>
+          </div>
         </div>
 
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 mb-4">
@@ -75,6 +92,10 @@ function TicketStub({
             <p className="text-sm font-semibold text-slate-600">{segment.to.code}</p>
             <p className="text-xs text-slate-400">{segment.to.city}</p>
           </div>
+        </div>
+
+        <div className="mb-4 print:hidden">
+          <RouteMap from={segment.from} to={segment.to} />
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs border-t border-dashed border-slate-200 pt-4">
@@ -96,11 +117,32 @@ function TicketStub({
           <div>
             <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-0.5">Seat</p>
             <p className="font-semibold text-slate-800">
-              {12 + (segment.flightNumber.length % 20)}
-              {String.fromCharCode(65 + (segment.flightNumber.charCodeAt(0) % 6))}
+              {primarySeat ??
+                `${12 + (segment.flightNumber.length % 20)}${String.fromCharCode(
+                  65 + (segment.flightNumber.charCodeAt(0) % 6)
+                )}`}
             </p>
           </div>
         </div>
+
+        {flight.fareTier && (
+          <div className="mt-3 pt-3 border-t border-dashed border-slate-200 flex flex-wrap gap-x-6 gap-y-1 text-xs">
+            <div>
+              <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-0.5">Baggage</p>
+              <p className="font-semibold text-slate-800">
+                Cabin {flight.fareTier.cabinBaggageKg}kg · Check-in {flight.fareTier.checkInBaggageKg}kg
+              </p>
+            </div>
+            <div>
+              <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-0.5">Cancellation</p>
+              <p className="font-semibold text-slate-800">
+                {flight.fareTier.cancellationFee === "free"
+                  ? "Free"
+                  : `${formatPrice(flight.fareTier.cancellationFee)} fee`}
+              </p>
+            </div>
+          </div>
+        )}
 
         {passengers.length > 0 && (
           <div className="mt-4 pt-4 border-t border-dashed border-slate-200">
@@ -111,6 +153,11 @@ function TicketStub({
               {passengers.map((p, i) => (
                 <p key={i} className="text-sm font-semibold text-slate-800">
                   {p.firstName} {p.lastName}
+                  {seatIds?.[i] && (
+                    <span className="ml-1.5 text-xs font-medium text-indigo-600">
+                      Seat {seatIds[i]}
+                    </span>
+                  )}
                 </p>
               ))}
             </div>
@@ -141,30 +188,39 @@ function TicketStub({
 export default function Ticket({
   outbound,
   returnFlight,
+  legs,
   passengers,
   confirmationCode,
+  seatSelections,
 }: {
-  outbound: Flight;
-  returnFlight: Flight | null;
+  outbound?: Flight;
+  returnFlight?: Flight | null;
+  legs?: Flight[];
   passengers: Passenger[];
   confirmationCode: string;
+  seatSelections?: SeatSelectionMap;
 }) {
+  const stubs: { flight: Flight; label: string }[] = legs
+    ? legs.map((flight, i) => ({ flight, label: `Flight ${i + 1}` }))
+    : outbound
+      ? [
+          { flight: outbound, label: returnFlight ? "Outbound" : "Boarding pass" },
+          ...(returnFlight ? [{ flight: returnFlight, label: "Return" }] : []),
+        ]
+      : [];
+
   return (
     <div id="printable-ticket" className="flex flex-col gap-4">
-      <TicketStub
-        flight={outbound}
-        label={returnFlight ? "Outbound" : "Boarding pass"}
-        passengers={passengers}
-        confirmationCode={confirmationCode}
-      />
-      {returnFlight && (
+      {stubs.map(({ flight, label }, legIndex) => (
         <TicketStub
-          flight={returnFlight}
-          label="Return"
+          key={legIndex}
+          flight={flight}
+          label={label}
           passengers={passengers}
           confirmationCode={confirmationCode}
+          seatIds={passengers.map((_, p) => seatSelections?.[`${legIndex}-${p}`])}
         />
-      )}
+      ))}
     </div>
   );
 }
