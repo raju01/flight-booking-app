@@ -73,8 +73,8 @@ export default function Home() {
       </section>
 
       <section className="relative max-w-5xl mx-auto w-full px-4 sm:px-6 -mt-12 sm:-mt-16 pb-20">
-        <div className="glass-card rounded-3xl shadow-2xl shadow-indigo-900/10 overflow-hidden">
-          <div className="flex p-2 gap-2">
+        <div className="glass-card rounded-3xl shadow-2xl shadow-indigo-900/10">
+          <div className="flex p-2 gap-2 rounded-t-3xl overflow-hidden">
             {MODES.map((m) => {
               const isActive = mode === m.key;
               return (
