@@ -6,6 +6,7 @@ import { Bus } from "@/types/bus";
 import { Passenger } from "@/types/flight";
 import { formatPrice } from "@/lib/currency";
 import { CheckCircleIcon, BusIcon } from "@/components/icons";
+import BusTicket from "@/components/BusTicket";
 
 interface BusBookingMeta {
   passengers: number;
@@ -163,25 +164,37 @@ export default function BusBookPage() {
       )}
 
       {step === "confirmed" && (
-        <div className="mt-8 glass-card rounded-3xl p-8 text-center relative overflow-hidden">
-          <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-emerald-200/40 blur-3xl" />
-          <div className="relative flex flex-col items-center gap-3">
-            <span className="flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-emerald-500 to-teal-400 text-white shadow-lg shadow-emerald-200">
-              <CheckCircleIcon className="w-8 h-8" />
-            </span>
-            <p className="text-emerald-700 font-extrabold text-xl">Booking confirmed!</p>
-            <p className="text-sm text-slate-600">
-              Confirmation code:{" "}
-              <span className="font-mono font-bold text-slate-800">{confirmationCode}</span>
-            </p>
-            <button
-              onClick={() => router.push("/")}
-              className="mt-2 inline-flex items-center gap-1.5 text-emerald-600 font-semibold hover:underline cursor-pointer"
-            >
-              <BusIcon className="w-4 h-4" />
-              Book another trip
-            </button>
+        <div className="mt-8 flex flex-col gap-6">
+          <div className="glass-card rounded-3xl p-8 text-center relative overflow-hidden print:hidden">
+            <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-emerald-200/40 blur-3xl" />
+            <div className="relative flex flex-col items-center gap-3">
+              <span className="flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-emerald-500 to-teal-400 text-white shadow-lg shadow-emerald-200">
+                <CheckCircleIcon className="w-8 h-8" />
+              </span>
+              <p className="text-emerald-700 font-extrabold text-xl">Booking confirmed!</p>
+              <p className="text-sm text-slate-600">
+                Confirmation code:{" "}
+                <span className="font-mono font-bold text-slate-800">{confirmationCode}</span>
+              </p>
+              <div className="flex items-center gap-4 mt-2">
+                <button
+                  onClick={() => window.print()}
+                  className="inline-flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:shadow-lg hover:shadow-emerald-300/50 text-white text-sm font-bold rounded-full px-5 py-2.5 transition-all cursor-pointer"
+                >
+                  Print / Save ticket
+                </button>
+                <button
+                  onClick={() => router.push("/")}
+                  className="inline-flex items-center gap-1.5 text-emerald-600 font-semibold hover:underline cursor-pointer"
+                >
+                  <BusIcon className="w-4 h-4" />
+                  Book another trip
+                </button>
+              </div>
+            </div>
           </div>
+
+          <BusTicket bus={bus} passengers={passengers} confirmationCode={confirmationCode} />
         </div>
       )}
     </div>
