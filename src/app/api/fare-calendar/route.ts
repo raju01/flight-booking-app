@@ -11,6 +11,9 @@ function addDays(iso: string, days: number) {
   return d.toISOString().slice(0, 10);
 }
 
+// Live providers can take several seconds; without this a short platform default may cut them off.
+export const maxDuration = 30;
+
 export async function GET(request: NextRequest) {
   const params = parseSearchParams(request.nextUrl.searchParams);
   if (!params) return Response.json({ error: "Invalid search parameters" }, { status: 400 });

@@ -3,6 +3,9 @@ import { isAirLabsConfigured, lookupAirLabsStatus } from "@/lib/airlabs";
 import { lookupFlightStatus } from "@/lib/flightStatus";
 import type { DataSource } from "@/lib/flightSearch";
 
+// Live providers can take several seconds; without this a short platform default may cut them off.
+export const maxDuration = 30;
+
 export async function GET(request: NextRequest) {
   const flightNumber = (request.nextUrl.searchParams.get("flightNumber") ?? "")
     .toUpperCase()
