@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { lookupFlightStatus } from "@/lib/flightStatus";
+import type { DataSource } from "@/lib/flightSearch";
 import { FlightStatusInfo, FlightStatusState } from "@/types/flightStatus";
 import { PlaneIcon } from "@/components/icons";
+import DataSourceBadge from "@/components/DataSourceBadge";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -28,10 +29,24 @@ export default function FlightStatusPage() {
   const [flightNumber, setFlightNumber] = useState("6E204");
   const [date, setDate] = useState(todayISO());
   const [result, setResult] = useState<FlightStatusInfo | null | undefined>(undefined);
+  const [source, setSource] = useState<DataSource>("mock");
+  const [isLoading, setIsLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setResult(lookupFlightStatus(flightNumber, date));
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams({ flightNumber, date });
+      const res = await fetch(`/api/flight-status?${params}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = (await res.json()) as { source: DataSource; status: FlightStatusInfo | null };
+      setSource(body.source);
+      setResult(body.status);
+    } catch {
+      setResult(null);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -39,6 +54,7 @@ export default function FlightStatusPage() {
       <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 flex items-center gap-2 mb-1">
         <PlaneIcon className="w-6 h-6 text-fuchsia-500" />
         Flight status
+        {result !== undefined && <DataSourceBadge source={source} liveLabel="Live status" />}
       </h1>
       <p className="text-sm text-slate-500 mb-6">
         Track real-time status for any IndiGo, Air India, SpiceJet, Vistara, Akasa Air, or Air
@@ -64,14 +80,14 @@ export default function FlightStatusPage() {
           type="submit"
           className="bg-gradient-to-r from-indigo-600 to-fuchsia-500 hover:shadow-lg hover:shadow-violet-300/50 text-white font-bold rounded-full px-6 py-2.5 transition-all cursor-pointer whitespace-nowrap"
         >
-          Check status
+          {isLoading ? "Checking…" : "Check status"}
         </button>
       </form>
 
       {result === null && (
         <div className="border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center text-slate-500 text-sm bg-white/50">
-          No flight found for that number. Try a code like 6E204, AI101, SG217, UK932, QP238, or
-          IX809.
+          No flight found for that number on that date. Live status only covers flights operating
+          today or very soon.
         </div>
       )}
 

@@ -36,3 +36,17 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 # flight-booking-app
 # flight-booking-app
+
+## Live flight data
+
+Copy `.env.example` to `.env.local` and fill in the keys. Without a key (or if the provider is
+unreachable) the app falls back to generated sample data and shows a "Sample data" badge.
+
+- **Flight search** uses Google Flights data via [SerpApi](https://serpapi.com) (`SERPAPI_API_KEY`),
+  which covers Indian airlines. It is search and prices only; booking in this app is still a mock.
+  Every search spends one SerpApi credit; results are cached in memory for 10 minutes.
+- **Fare calendar** needs 7 searches per view, so with live data it is hidden unless
+  `SERPAPI_FARE_CALENDAR=1` is set.
+- **Flight status** uses [AirLabs](https://airlabs.co) (`AIRLABS_API_KEY`). It only knows flights
+  running today or very soon.
+- Price-trend hints, buses and seat maps are still generated sample data.

@@ -65,10 +65,78 @@ export const AIRPORTS: Airport[] = [
   { code: "DHM", city: "Dharamshala", name: "Kangra Airport" },
   { code: "IXW", city: "Jamshedpur", name: "Sonari Airport" },
   { code: "PYB", city: "Jeypore", name: "Jeypore Airport" },
+  { code: "AGR", city: "Agra", name: "Agra Airport / Agra Air Force Station" },
+  { code: "AGX", city: "Agatti", name: "Agatti Airport" },
+  { code: "AHA", city: "Ambikapur", name: "Maa Mahamaya Airport" },
+  { code: "AIP", city: "Adampur", name: "Adampur Airport" },
+  { code: "AVR", city: "Amravati", name: "Amravati  Airport" },
+  { code: "AYJ", city: "Faizabad", name: "Maharshi Valmiki International Airport" },
+  { code: "BEK", city: "Bareilly", name: "Bareilly Air Force Station" },
+  { code: "BHO", city: "Bhopal", name: "Raja Bhoj International Airport" },
+  { code: "BHU", city: "Bhavnagar", name: "Bhavnagar Airport" },
+  { code: "CDP", city: "Kadapa", name: "Kadapa Airport" },
+  { code: "CNN", city: "Kannur", name: "Kannur International Airport" },
+  { code: "DBR", city: "Darbhanga", name: "Darbhanga Airport" },
+  { code: "DGH", city: "Deoghar", name: "Deoghar Airport" },
+  { code: "DIU", city: "Diu", name: "Diu Airport" },
+  { code: "DMU", city: "Dimapur", name: "Dimapur Airport" },
+  { code: "DXN", city: "Gautam Buddha Nagar", name: "Noida International Airport" },
+  { code: "GAY", city: "Gaya", name: "Gaya Airport" },
+  { code: "GBI", city: "Kalaburagi", name: "Kalaburagi Airport" },
+  { code: "GDB", city: "Gondia", name: "Gondia Airport" },
+  { code: "GOP", city: "Gorakhpur", name: "Gorakhpur Airport" },
+  { code: "HDO", city: "Ghaziabad", name: "Hindon Airport / Hindon Air Force Station" },
+  { code: "HGI", city: "Hollongi", name: "Itanagar Donyi Polo Hollongi Airport" },
+  { code: "HJR", city: "Khajuraho", name: "Khajuraho Airport" },
+  { code: "HSR", city: "Rajkot", name: "Rajkot International Airport" },
+  { code: "HSS", city: "Hisar", name: "Maharaja Agrasen International Airport" },
+  { code: "HWR", city: "Halwara", name: "Halwara International Airport" },
+  { code: "ISK", city: "Nashik", name: "Nashik International Airport" },
+  { code: "IXI", city: "Lilabari", name: "Lilabari North Lakhimpur Airport" },
+  { code: "IXK", city: "Keshod", name: "Keshod Airport" },
+  { code: "IXM", city: "Madurai", name: "Madurai Airport" },
+  { code: "IXP", city: "Pathankot", name: "Pathankot Airport" },
+  { code: "IXY", city: "Kandla", name: "Kandla Airport" },
+  { code: "JGA", city: "Jamnagar", name: "Jamnagar Airport" },
+  { code: "JGB", city: "Jagdalpur", name: "Jagdalpur Airport" },
+  { code: "JLG", city: "Jalgaon", name: "Jalgaon Airport" },
+  { code: "JLR", city: "Jabalpur", name: "Jabalpur Airport" },
+  { code: "JRG", city: "Jharsuguda Airport", name: "Jharsuguda Airport" },
+  { code: "JRH", city: "Jorhat", name: "Jorhat Airport" },
+  { code: "JSA", city: "Jaisalmer Airport", name: "Jaisalmer Airport" },
+  { code: "KJB", city: "Orvakal", name: "Kurnool Airport" },
+  { code: "KLH", city: "Kolhapur", name: "Kolhapur Airport" },
+  { code: "KNU", city: "Kanpur", name: "Kanpur Airport" },
+  { code: "KQH", city: "Ajmer (Kishangarh)", name: "Kishangarh Airport Ajmer" },
+  { code: "LTU", city: "Latur", name: "Murod Kond Airport" },
+  { code: "MYQ", city: "Mysore", name: "Mysore Airport" },
+  { code: "MZS", city: "Moradabad", name: "Moradabad Airport" },
+  { code: "NDC", city: "Nanded", name: "Nanded Airport" },
+  { code: "NMI", city: "Navi Mumbai", name: "Navi Mumbai International Airport" },
+  { code: "PAB", city: "Bilaspur", name: "Bilaspur Airport" },
+  { code: "PBD", city: "Porbandar", name: "Porbandar Airport" },
+  { code: "RDP", city: "Durgapur", name: "Kazi Nazrul Islam Airport" },
+  { code: "REW", city: "Rewa", name: "Rewa Airport, Chorhata, REWA" },
+  { code: "SAG", city: "Kakadi", name: "Shirdi International Airport" },
+  { code: "SDW", city: "Chipi", name: "Sindhudurg Airport" },
+  { code: "SHL", city: "Shillong", name: "Shillong Airport" },
+  { code: "TCR", city: "Vagaikulam", name: "Tuticorin Airport" },
+  { code: "TEZ", city: "Tezpur Airport", name: "Tezpur Airport" },
+  { code: "UKE", city: "Bhawanipatna", name: "Utkela Airport" },
+  { code: "VSV", city: "Shravasti", name: "Shravasti Airport" },
 ];
 
+const registry = new Map<string, Airport>();
+
+// Live search returns airports outside the bundled list; remember them so findAirport can resolve them.
+export function registerAirport(airport: Airport) {
+  registry.set(airport.code, airport);
+}
+
 export function findAirport(code: string): Airport | undefined {
-  return AIRPORTS.find((a) => a.code === code);
+  const known = AIRPORTS.find((a) => a.code === code) ?? registry.get(code);
+  if (known) return known;
+  return /^[A-Z]{3}$/.test(code) ? { code, city: code, name: code } : undefined;
 }
 
 export function formatAirport(a: Airport): string {

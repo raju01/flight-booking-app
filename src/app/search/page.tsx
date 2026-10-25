@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import FlightCard from "@/components/FlightCard";
 import FareCalendar from "@/components/FareCalendar";
 import NearbyAirportSuggestion from "@/components/NearbyAirportSuggestion";
-import { generateMockFlights } from "@/lib/mockFlights";
+import DataSourceBadge from "@/components/DataSourceBadge";
+import { DataSource, fetchFlights } from "@/lib/liveApi";
 import { lowestEmissionsId } from "@/lib/emissions";
 import { layoverMinutes } from "@/lib/layover";
 import { addFareAlert, findFareAlert, removeFareAlert } from "@/lib/fareAlerts";
@@ -17,6 +18,8 @@ import { PlaneIcon } from "@/components/icons";
 import { CabinClass, Flight } from "@/types/flight";
 import { MultiCityLeg } from "@/types/multiCity";
 import { TravelerCounts, totalTravelers } from "@/types/traveler";
+
+const NO_FLIGHTS: Flight[] = [];
 
 type StopsFilter = "any" | "nonstop" | "1stop";
 type TimeOfDayFilter = "any" | TimeOfDay;
@@ -63,9 +66,15 @@ function SearchResults() {
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [timeOfDayFilter, setTimeOfDayFilter] = useState<TimeOfDayFilter>("any");
   const [layoverFilter, setLayoverFilter] = useState<LayoverFilter>("any");
-  const searchKey = `${from}|${to}|${departDate}|${returnDate}|${cabinClass}`;
-  const [loadedKey, setLoadedKey] = useState<string | null>(null);
-  const isLoading = loadedKey !== searchKey;
+  const passengerCount = travelers.adults + travelers.children;
+  const searchKey = `${from}|${to}|${departDate}|${returnDate}|${cabinClass}|${passengerCount}`;
+  const [results, setResults] = useState<{
+    key: string;
+    outbound: Flight[];
+    returns: Flight[];
+    source: DataSource;
+  } | null>(null);
+  const isLoading = results?.key !== searchKey;
   const [alertSaved, setAlertSaved] = useState(false);
 
   useEffect(() => {
@@ -75,23 +84,30 @@ function SearchResults() {
     setAlertSaved(Boolean(findFareAlert(from, to, departDate, cabinClass)));
   }, [from, to, departDate, cabinClass]);
 
-  const outboundFlights = useMemo(
-    () => generateMockFlights({ from, to, date: departDate, cabinClass }),
-    [from, to, departDate, cabinClass]
-  );
-
-  const returnFlights = useMemo(
-    () =>
-      returnDate
-        ? generateMockFlights({ from: to, to: from, date: returnDate, cabinClass })
-        : [],
-    [from, to, returnDate, cabinClass]
-  );
-
   useEffect(() => {
-    const timer = setTimeout(() => setLoadedKey(searchKey), 550);
-    return () => clearTimeout(timer);
-  }, [searchKey]);
+    if (!from || !to || !departDate) return;
+    const controller = new AbortController();
+    const base = { cabinClass, passengers: passengerCount };
+    Promise.all([
+      fetchFlights({ ...base, from, to, date: departDate }, controller.signal),
+      returnDate
+        ? fetchFlights({ ...base, from: to, to: from, date: returnDate }, controller.signal)
+        : null,
+    ])
+      .then(([outbound, ret]) =>
+        setResults({
+          key: searchKey,
+          outbound: outbound.flights,
+          returns: ret?.flights ?? NO_FLIGHTS,
+          source: outbound.source,
+        })
+      )
+      .catch(() => {}); // aborted by a newer search
+    return () => controller.abort();
+  }, [from, to, departDate, returnDate, cabinClass, passengerCount, searchKey]);
+
+  const outboundFlights = results?.key === searchKey ? results.outbound : NO_FLIGHTS;
+  const returnFlights = results?.key === searchKey ? results.returns : NO_FLIGHTS;
 
   const priceCeiling = useMemo(() => {
     const all = [...outboundFlights, ...returnFlights];
@@ -209,6 +225,11 @@ function SearchResults() {
             {departDate}
             {returnDate ? ` – ${returnDate}` : ""} · {formatTravelerSummary(travelers)} ·{" "}
             {cabinClass}
+            {results?.key === searchKey && (
+              <span className="ml-2 align-middle">
+                <DataSourceBadge source={results.source} />
+              </span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-3 text-sm">
@@ -423,20 +444,38 @@ function MultiCityResults() {
   );
   const activeLegIndex = selectedFlights.findIndex((f) => f === null);
 
-  const searchKey = legsParam + cabinClass;
-  const [loadedKey, setLoadedKey] = useState<string | null>(null);
-  const isLoading = loadedKey !== searchKey;
+  const passengerCount = travelers.adults + travelers.children;
+  const searchKey = `${legsParam}|${cabinClass}|${passengerCount}`;
+  const [legResults, setLegResults] = useState<{
+    key: string;
+    flights: Flight[][];
+    source: DataSource;
+  } | null>(null);
+  const isLoading = legResults?.key !== searchKey;
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoadedKey(searchKey), 550);
-    return () => clearTimeout(timer);
-  }, [searchKey]);
+    if (legs.length === 0) return;
+    const controller = new AbortController();
+    Promise.all(
+      legs.map((leg) =>
+        fetchFlights(
+          { from: leg.from, to: leg.to, date: leg.date, cabinClass, passengers: passengerCount },
+          controller.signal
+        )
+      )
+    )
+      .then((all) =>
+        setLegResults({
+          key: searchKey,
+          flights: all.map((r) => r.flights),
+          source: all.every((r) => r.source === "live") ? "live" : "mock",
+        })
+      )
+      .catch(() => {}); // aborted by a newer search
+    return () => controller.abort();
+  }, [legs, cabinClass, passengerCount, searchKey]);
 
-  const legFlights = useMemo(
-    () =>
-      legs.map((leg) => generateMockFlights({ from: leg.from, to: leg.to, date: leg.date, cabinClass })),
-    [legs, cabinClass]
-  );
+  const legFlights = legResults?.key === searchKey ? legResults.flights : legs.map(() => NO_FLIGHTS);
 
   function handleSelect(legIndex: number, flight: Flight) {
     setSelectedFlights((prev) => {
@@ -478,6 +517,7 @@ function MultiCityResults() {
       <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 flex items-center gap-2 flex-wrap mb-1">
         Multi-city trip
         <PlaneIcon className="w-5 h-5 text-fuchsia-500" />
+        {legResults?.key === searchKey && <DataSourceBadge source={legResults.source} />}
       </h1>
       <p className="text-sm text-slate-500 mb-6">
         {legs.length} flights · {formatTravelerSummary(travelers)} · {cabinClass}

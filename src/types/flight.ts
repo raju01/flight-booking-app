@@ -26,9 +26,10 @@ export interface Flight {
   price: number;
   currency: string;
   cabinClass: CabinClass;
-  seatsLeft: number;
+  seatsLeft?: number; // absent when the provider doesn't report availability
   fareTier?: FareTier;
   priceLocked?: boolean;
+  bookingUrl?: string; // set for live fares, which are booked on the airline's site rather than here
 }
 
 export interface SearchParams {
