@@ -10,7 +10,7 @@ function todayISO() {
 }
 
 const inputClass =
-  "w-full border-2 border-slate-200 rounded-2xl px-4 py-2.5 bg-white/70 transition-colors focus:outline-none focus:border-emerald-400 focus:bg-white";
+  "w-full border-2 border-slate-200 rounded-2xl px-4 py-2.5 bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900 transition-colors focus:outline-none focus:border-emerald-400";
 
 export default function BusSearchForm() {
   const router = useRouter();

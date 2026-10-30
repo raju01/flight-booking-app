@@ -1,4 +1,5 @@
 import { airlineBookingLink } from "@/lib/airlineSites";
+import { redbusCity } from "@/lib/redbusCities";
 import { Flight } from "@/types/flight";
 
 export interface OutboundLink {
@@ -118,23 +119,47 @@ export function flightBookingLinks(flight: Flight): { primary: OutboundLink; sec
   };
 }
 
+const REDBUS_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function redbusOnward(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-");
+  return `${day}-${REDBUS_MONTHS[Number(month) - 1]}-${year}`;
+}
+
 export function busBookingLink(bus: { from: string; to: string; departureTime: string }): OutboundLink {
   const date = bus.departureTime.slice(0, 10);
-  const template =
-    process.env.NEXT_PUBLIC_BUS_PARTNER_URL?.trim() ||
-    "https://www.redbus.in/bus-tickets/{fromSlug}-to-{toSlug}";
+  const fromCity = redbusCity(bus.from);
+  const toCity = redbusCity(bus.to);
   const seller = process.env.NEXT_PUBLIC_BUS_PARTNER_NAME?.trim() || "redBus";
-  return {
-    label: `Book on ${seller}`,
-    href: withAffiliate(
-      fill(template, {
-        from: bus.from,
-        to: bus.to,
-        fromSlug: slug(bus.from),
-        toSlug: slug(bus.to),
-        date,
-      })
-    ),
-    seller,
-  };
+  const template = process.env.NEXT_PUBLIC_BUS_PARTNER_URL?.trim();
+
+  let href: string;
+  if (template) {
+    href = fill(template, {
+      from: fromCity?.name ?? bus.from,
+      to: toCity?.name ?? bus.to,
+      fromSlug: fromCity?.slug ?? slug(bus.from),
+      toSlug: toCity?.slug ?? slug(bus.to),
+      fromId: fromCity?.id ?? "",
+      toId: toCity?.id ?? "",
+      date,
+    });
+  } else if (fromCity && toCity) {
+    const query = new URLSearchParams({
+      fromCityId: fromCity.id,
+      fromCityName: fromCity.name,
+      toCityId: toCity.id,
+      toCityName: toCity.name,
+      onward: redbusOnward(date),
+      srcCountry: "IND",
+      destCountry: "IND",
+    });
+    href = `https://www.redbus.in/bus-tickets/${fromCity.slug}-to-${toCity.slug}?${query}`;
+  } else {
+    // A guessed slug is rewritten by redBus to fromCityName=undefined.
+    // Only Port Blair and Agatti have no redBus city; open the homepage there.
+    href = "https://www.redbus.in/";
+  }
+
+  return { label: `Book on ${seller}`, href: withAffiliate(href), seller };
 }

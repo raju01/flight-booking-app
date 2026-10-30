@@ -128,7 +128,7 @@ export default function AirportAutocomplete({
         }}
         onKeyDown={handleKeyDown}
         placeholder="Type a city or airport code"
-        className={`w-full border-2 border-slate-200 rounded-2xl px-4 py-2.5 bg-white/70 transition-colors focus:outline-none focus:bg-white ${styles.focusRing}`}
+        className={`w-full border-2 border-slate-200 rounded-2xl px-4 py-2.5 bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900 transition-colors focus:outline-none ${styles.focusRing}`}
       />
 
       {isOpen && query.trim().length >= 2 && (
