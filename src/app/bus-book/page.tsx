@@ -52,7 +52,7 @@ export default function BusBookPage() {
 
   const totalPrice = useMemo(() => {
     if (!bus || !meta) return 0;
-    return bus.price * meta.passengers;
+    return (bus.price ?? 0) * meta.passengers;
   }, [bus, meta]);
 
   function updatePassenger(index: number, field: keyof Passenger, value: string) {
@@ -254,10 +254,12 @@ function BusSummary({ bus, totalPrice }: { bus: Bus; totalPrice: number }) {
             {bus.from} → {bus.to}
           </p>
           <p className="text-slate-500">
-            {bus.operator} · {bus.busNumber} · {bus.seatType}
+            {bus.operator}
+            {bus.busNumber ? ` · ${bus.busNumber}` : ""}
+            {bus.seatType ? ` · ${bus.seatType}` : ""}
           </p>
         </div>
-        <p className="font-bold text-slate-800">{formatPrice(bus.price)}</p>
+        <p className="font-bold text-slate-800">{bus.price === null ? "Fare on redBus" : formatPrice(bus.price)}</p>
       </div>
       <div className="border-t border-slate-200 mt-3 pt-3 flex justify-between items-center">
         <span className="text-sm text-slate-500 font-medium">Total price</span>

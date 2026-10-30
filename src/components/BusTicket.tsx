@@ -53,11 +53,11 @@ export default function BusTicket({
             </span>
             <div>
               <p className="font-extrabold text-slate-900 leading-tight">{bus.operator}</p>
-              <p className="text-xs text-slate-500">{bus.busNumber}</p>
+              {bus.busNumber && <p className="text-xs text-slate-500">{bus.busNumber}</p>}
             </div>
           </div>
           <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 rounded-full px-2.5 py-1">
-            {bus.seatType}
+            {bus.seatType ?? "Bus"}
           </span>
         </div>
 
@@ -83,18 +83,18 @@ export default function BusTicket({
           </div>
           <div>
             <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-0.5">Seat type</p>
-            <p className="font-semibold text-slate-800">{bus.seatType}</p>
+            <p className="font-semibold text-slate-800">{bus.seatType ?? "Not listed"}</p>
           </div>
           <div>
             <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-0.5">Boarding</p>
             <p className="font-semibold text-slate-800">
-              Gate {(bus.busNumber.charCodeAt(0) % 12) + 1}
+              {bus.busNumber ? `Gate ${(bus.busNumber.charCodeAt(0) % 12) + 1}` : "See redBus"}
             </p>
           </div>
           <div>
             <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-0.5">Seat</p>
             <p className="font-semibold text-slate-800">
-              {1 + (bus.busNumber.length % 40)}
+              {bus.busNumber ? 1 + (bus.busNumber.length % 40) : "—"}
             </p>
           </div>
         </div>
@@ -129,7 +129,9 @@ export default function BusTicket({
             <span key={i} className="bg-white" style={{ width: `${w}px`, height: "100%" }} />
           ))}
         </div>
-        <p className="text-xs font-semibold opacity-90">{formatPrice(bus.price)}</p>
+        <p className="text-xs font-semibold opacity-90">
+          {bus.price === null ? "Fare on redBus" : formatPrice(bus.price)}
+        </p>
       </div>
     </div>
   );

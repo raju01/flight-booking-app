@@ -3,8 +3,9 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import BusCard from "@/components/BusCard";
-import { generateMockBuses } from "@/lib/mockBuses";
+import DataSourceBadge from "@/components/DataSourceBadge";
 import { findAirport } from "@/lib/airports";
+import type { DataSource } from "@/lib/flightSearch";
 import { formatPrice } from "@/lib/currency";
 import { timeOfDayRange, TimeOfDay } from "@/lib/timeOfDay";
 import { BusIcon } from "@/components/icons";
@@ -28,23 +29,32 @@ function BusResults() {
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [timeOfDayFilter, setTimeOfDayFilter] = useState<TimeOfDayFilter>("any");
   const searchKey = `${from}|${to}|${travelDate}`;
-  const [loadedKey, setLoadedKey] = useState<string | null>(null);
-  const isLoading = loadedKey !== searchKey;
-
-  const buses = useMemo(
-    () => generateMockBuses({ from, to, date: travelDate }),
-    [from, to, travelDate]
-  );
+  const [results, setResults] = useState<{
+    key: string;
+    buses: Bus[];
+    source: DataSource;
+  } | null>(null);
+  const isLoading = results?.key !== searchKey;
+  const buses = results?.key === searchKey ? results.buses : [];
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoadedKey(searchKey), 550);
-    return () => clearTimeout(timer);
-  }, [searchKey]);
+    if (!from || !to || !travelDate) return;
+    const controller = new AbortController();
+    const params = new URLSearchParams({ from, to, date: travelDate });
+    fetch(`/api/buses?${params}`, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<{ buses: Bus[]; source: DataSource }>;
+      })
+      .then((body) => setResults({ key: searchKey, buses: body.buses, source: body.source }))
+      .catch(() => {});
+    return () => controller.abort();
+  }, [from, to, travelDate, searchKey]);
 
-  const priceCeiling = useMemo(
-    () => (buses.length ? Math.max(...buses.map((b) => b.price)) : 0),
-    [buses]
-  );
+  const priceCeiling = useMemo(() => {
+    const priced = buses.map((b) => b.price).filter((price): price is number => price !== null);
+    return priced.length ? Math.max(...priced) : 0;
+  }, [buses]);
 
   const operators = useMemo(() => Array.from(new Set(buses.map((b) => b.operator))), [buses]);
 
@@ -59,12 +69,6 @@ function BusResults() {
 
   const fromAirport = findAirport(from);
   const toAirport = findAirport(to);
-
-  function handleSelect(bus: Bus) {
-    sessionStorage.setItem("selectedBus", JSON.stringify(bus));
-    sessionStorage.setItem("busBookingMeta", JSON.stringify({ passengers }));
-    router.push("/bus-book");
-  }
 
   function resetFilters() {
     setSeatTypeFilter("any");
@@ -107,7 +111,17 @@ function BusResults() {
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             {travelDate} · {passengers} passenger{passengers > 1 ? "s" : ""}
+            {results?.key === searchKey && (
+              <span className="ml-2 align-middle">
+                <DataSourceBadge source={results.source} liveLabel="Live buses" />
+              </span>
+            )}
           </p>
+          {results?.key === searchKey && results.source === "live" && (
+            <p className="text-xs text-slate-400 mt-1">
+              Times are from Google. A fare is shown when Google publishes one; otherwise check redBus.
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2 text-sm">
           <span className="text-slate-500 font-medium">Sort by</span>
@@ -213,7 +227,7 @@ function BusResults() {
         </aside>
 
         <div className="flex-1 min-w-0">
-          <BusList flights={filteredBuses} isLoading={isLoading} onSelect={handleSelect} />
+          <BusList buses={filteredBuses} isLoading={isLoading} />
         </div>
       </div>
     </div>
@@ -221,13 +235,11 @@ function BusResults() {
 }
 
 function BusList({
-  flights,
+  buses,
   isLoading,
-  onSelect,
 }: {
-  flights: Bus[];
+  buses: Bus[];
   isLoading: boolean;
-  onSelect: (bus: Bus) => void;
 }) {
   if (isLoading) {
     return (
@@ -245,7 +257,7 @@ function BusList({
     );
   }
 
-  if (flights.length === 0) {
+  if (buses.length === 0) {
     return (
       <div className="border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center text-slate-500 text-sm bg-white/50">
         No buses match your filters. Try adjusting them.
@@ -255,8 +267,8 @@ function BusList({
 
   return (
     <div className="flex flex-col gap-3">
-      {flights.map((b, i) => (
-        <BusCard key={b.id} bus={b} onSelect={onSelect} style={{ animationDelay: `${i * 60}ms` }} />
+      {buses.map((b, i) => (
+        <BusCard key={b.id} bus={b} style={{ animationDelay: `${i * 60}ms` }} />
       ))}
     </div>
   );
@@ -274,7 +286,7 @@ function filterBuses(
   return buses.filter((b) => {
     if (filters.seatTypeFilter !== "any" && b.seatType !== filters.seatTypeFilter) return false;
     if (filters.operatorFilter !== "any" && b.operator !== filters.operatorFilter) return false;
-    if (filters.maxPrice !== null && b.price > filters.maxPrice) return false;
+    if (filters.maxPrice !== null && (b.price === null || b.price > filters.maxPrice)) return false;
     if (filters.timeOfDayFilter !== "any") {
       const [start, end] = timeOfDayRange(filters.timeOfDayFilter);
       const hour = new Date(b.departureTime).getHours();
@@ -287,8 +299,10 @@ function filterBuses(
 
 function sortBuses(buses: Bus[], sortBy: "price" | "duration" | "rating") {
   const copy = [...buses];
-  if (sortBy === "price") return copy.sort((a, b) => a.price - b.price);
-  if (sortBy === "rating") return copy.sort((a, b) => b.rating - a.rating);
+  if (sortBy === "price") {
+    return copy.sort((a, b) => (a.price ?? Number.MAX_SAFE_INTEGER) - (b.price ?? Number.MAX_SAFE_INTEGER));
+  }
+  if (sortBy === "rating") return copy.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
   return copy.sort((a, b) => a.durationMinutes - b.durationMinutes);
 }
 

@@ -18,6 +18,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SkyBook — Flight Booking",
   description: "Search and book flights",
+  other: {
+    "cuelinks-verification": "VERIFY-CL-SAD4IA1L",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

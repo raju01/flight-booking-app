@@ -60,7 +60,6 @@ function SearchResults() {
   const tripType = searchParams.get("tripType") ?? "one-way";
 
   const [sortBy, setSortBy] = useState<SortBy>("best");
-  const [selectedOutboundId, setSelectedOutboundId] = useState<string | null>(null);
   const [stopsFilter, setStopsFilter] = useState<StopsFilter>("any");
   const [airlineFilter, setAirlineFilter] = useState<string>("any");
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
@@ -151,21 +150,6 @@ function SearchResults() {
   const fromAirport = findAirport(from);
   const toAirport = findAirport(to);
 
-  function handleSelect(flight: Flight, direction: "outbound" | "return") {
-    const key = direction === "outbound" ? "selectedOutbound" : "selectedReturn";
-    sessionStorage.setItem(key, JSON.stringify(flight));
-    sessionStorage.setItem(
-      "bookingMeta",
-      JSON.stringify({ travelers, cabinClass, tripType })
-    );
-
-    if (tripType === "round-trip" && direction === "outbound") {
-      setSelectedOutboundId(flight.id);
-      return; // wait for return flight selection
-    }
-    router.push("/book");
-  }
-
   function handleSelectDate(field: "departDate" | "returnDate", newDate: string) {
     const params = new URLSearchParams(searchParams.toString());
     params.set(field, newDate);
@@ -225,6 +209,7 @@ function SearchResults() {
             {departDate}
             {returnDate ? ` – ${returnDate}` : ""} · {formatTravelerSummary(travelers)} ·{" "}
             {cabinClass}
+            {" · "}Book on MakeMyTrip
             {results?.key === searchKey && (
               <span className="ml-2 align-middle">
                 <DataSourceBadge source={results.source} />
@@ -377,11 +362,6 @@ function SearchResults() {
             <h2 className="text-lg font-bold text-slate-900 mb-3">
               {tripType === "round-trip" ? "Outbound flights" : "Available flights"}
             </h2>
-            {selectedOutboundId && (
-              <p className="text-sm text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-2xl px-4 py-2.5 mb-3 animate-[fadeInUp_0.3s_ease-out] font-medium">
-                Outbound flight selected. Now choose your return flight below.
-              </p>
-            )}
             <FareCalendar
               from={from}
               to={to}
@@ -389,12 +369,7 @@ function SearchResults() {
               cabinClass={cabinClass}
               onSelectDate={(d) => handleSelectDate("departDate", d)}
             />
-            <FlightList
-              flights={sortedOutbound}
-              isLoading={isLoading}
-              selectedId={selectedOutboundId}
-              onSelect={(fl) => handleSelect(fl, "outbound")}
-            />
+            <FlightList flights={sortedOutbound} isLoading={isLoading} />
           </section>
 
           {tripType === "round-trip" && returnDate && (
@@ -407,12 +382,7 @@ function SearchResults() {
                 cabinClass={cabinClass}
                 onSelectDate={(d) => handleSelectDate("returnDate", d)}
               />
-              <FlightList
-                flights={sortedReturn}
-                isLoading={isLoading}
-                selectedId={null}
-                onSelect={(fl) => handleSelect(fl, "return")}
-              />
+              <FlightList flights={sortedReturn} isLoading={isLoading} />
             </section>
           )}
         </div>
@@ -427,7 +397,6 @@ function MultiCityResults() {
 
   const legsParam = searchParams.get("legs") ?? "[]";
   const travelers = readTravelerCounts(searchParams);
-  const passengers = totalTravelers(travelers);
   const cabinClass = (searchParams.get("cabinClass") as CabinClass) ?? "Economy";
 
   const legs: MultiCityLeg[] = useMemo(() => {
@@ -438,11 +407,6 @@ function MultiCityResults() {
       return [];
     }
   }, [legsParam]);
-
-  const [selectedFlights, setSelectedFlights] = useState<(Flight | null)[]>(() =>
-    legs.map(() => null)
-  );
-  const activeLegIndex = selectedFlights.findIndex((f) => f === null);
 
   const passengerCount = travelers.adults + travelers.children;
   const searchKey = `${legsParam}|${cabinClass}|${passengerCount}`;
@@ -477,27 +441,6 @@ function MultiCityResults() {
 
   const legFlights = legResults?.key === searchKey ? legResults.flights : legs.map(() => NO_FLIGHTS);
 
-  function handleSelect(legIndex: number, flight: Flight) {
-    setSelectedFlights((prev) => {
-      const copy = [...prev];
-      copy[legIndex] = flight;
-      return copy;
-    });
-  }
-
-  useEffect(() => {
-    if (legs.length > 0 && selectedFlights.every((f) => f !== null)) {
-      sessionStorage.setItem("selectedLegs", JSON.stringify(selectedFlights));
-      sessionStorage.setItem(
-        "bookingMeta",
-        JSON.stringify({ travelers, cabinClass, tripType: "multi-city" })
-      );
-      router.push("/book");
-    }
-    // travelers is derived fresh from searchParams each render; depending on passengers (its total) is sufficient.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFlights, legs.length, passengers, cabinClass, router]);
-
   if (legs.length === 0) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
@@ -520,29 +463,20 @@ function MultiCityResults() {
         {legResults?.key === searchKey && <DataSourceBadge source={legResults.source} />}
       </h1>
       <p className="text-sm text-slate-500 mb-6">
-        {legs.length} flights · {formatTravelerSummary(travelers)} · {cabinClass}
+        {legs.length} flights · {formatTravelerSummary(travelers)} · {cabinClass} · Book each
+        flight on MakeMyTrip
       </p>
 
       <div className="flex flex-col gap-10">
         {legs.map((leg, i) => {
           const fromAirport = findAirport(leg.from);
           const toAirport = findAirport(leg.to);
-          const isDone = selectedFlights[i] !== null;
-          const isActive = i === activeLegIndex;
 
           return (
-            <section key={i} className={isActive || isDone ? "" : "opacity-40 pointer-events-none"}>
+            <section key={i}>
               <div className="flex items-center gap-3 mb-3">
-                <span
-                  className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold shrink-0 ${
-                    isDone
-                      ? "bg-gradient-to-br from-emerald-500 to-teal-400 text-white"
-                      : isActive
-                        ? "bg-gradient-to-br from-indigo-600 to-fuchsia-500 text-white"
-                        : "bg-slate-100 text-slate-400"
-                  }`}
-                >
-                  {isDone ? "✓" : i + 1}
+                <span className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold shrink-0 bg-gradient-to-br from-indigo-600 to-fuchsia-500 text-white">
+                  {i + 1}
                 </span>
                 <h2 className="text-lg font-bold text-slate-900">
                   {fromAirport ? formatAirport(fromAirport) : leg.from} →{" "}
@@ -551,22 +485,7 @@ function MultiCityResults() {
                 <span className="text-sm text-slate-500">{leg.date}</span>
               </div>
 
-              {isDone && selectedFlights[i] && (
-                <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-2.5 mb-3 font-medium">
-                  Selected: {selectedFlights[i]!.segments[0].airline}{" "}
-                  {selectedFlights[i]!.segments[0].flightNumber} ·{" "}
-                  {formatPrice(selectedFlights[i]!.price)}
-                </p>
-              )}
-
-              {(isActive || isDone) && (
-                <FlightList
-                  flights={legFlights[i]}
-                  isLoading={isLoading}
-                  selectedId={selectedFlights[i]?.id ?? null}
-                  onSelect={(f) => handleSelect(i, f)}
-                />
-              )}
+              <FlightList flights={legFlights[i]} isLoading={isLoading} />
             </section>
           );
         })}
@@ -578,13 +497,9 @@ function MultiCityResults() {
 function FlightList({
   flights,
   isLoading,
-  selectedId,
-  onSelect,
 }: {
   flights: Flight[];
   isLoading: boolean;
-  selectedId: string | null;
-  onSelect: (flight: Flight) => void;
 }) {
   if (isLoading) {
     return (
@@ -618,9 +533,7 @@ function FlightList({
         <FlightCard
           key={f.id}
           flight={f}
-          selected={f.id === selectedId}
           isGreenest={f.id === greenestId}
-          onSelect={onSelect}
           style={{ animationDelay: `${i * 60}ms` }}
         />
       ))}

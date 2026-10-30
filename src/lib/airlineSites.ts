@@ -14,11 +14,7 @@ export function airlineSite(airline: string): string | undefined {
   return AIRLINE_SITES[airline];
 }
 
-// Paste the tracked-link format from your affiliate network into NEXT_PUBLIC_AFFILIATE_LINK_TEMPLATE,
-// using {url} where the airline's address goes, e.g. https://network.example/go?id=123&url={url}
+// Airline sites are not Cuelinks campaigns, so these stay as direct links.
 export function airlineBookingLink(airline: string): string | undefined {
-  const site = airlineSite(airline);
-  const template = process.env.NEXT_PUBLIC_AFFILIATE_LINK_TEMPLATE;
-  if (!site || !template) return site;
-  return template.replace("{url}", encodeURIComponent(site));
+  return airlineSite(airline);
 }

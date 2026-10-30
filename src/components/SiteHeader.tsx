@@ -100,7 +100,7 @@ export default function SiteHeader() {
             </Link>
           )}
           <span className="hidden lg:inline px-3 py-1.5 rounded-full bg-slate-900/5">
-            Demo booking experience
+            Book on MakeMyTrip
           </span>
         </nav>
       </div>

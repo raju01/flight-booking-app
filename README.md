@@ -49,4 +49,5 @@ unreachable) the app falls back to generated sample data and shows a "Sample dat
   `SERPAPI_FARE_CALENDAR=1` is set.
 - **Flight status** uses [AirLabs](https://airlabs.co) (`AIRLABS_API_KEY`). It only knows flights
   running today or very soon.
-- Price-trend hints, buses and seat maps are still generated sample data.
+- **Bus search** uses Google bus schedules via the same SerpApi key. A fare is shown when Google publishes one. If the search fails, the page falls back to sample data.
+- Price-trend hints and seat maps are still generated sample data.

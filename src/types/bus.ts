@@ -9,10 +9,10 @@ export interface Bus {
   departureTime: string; // ISO string
   arrivalTime: string; // ISO string
   durationMinutes: number;
-  seatType: SeatType;
-  price: number;
+  seatType: SeatType | null;
+  price: number | null;
   currency: string;
-  seatsLeft: number;
-  rating: number; // 1-5
+  seatsLeft: number | null;
+  rating: number | null; // 1-5, null when the provider does not publish one
   amenities: string[];
 }
