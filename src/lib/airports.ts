@@ -1,6 +1,7 @@
 import { Airport } from "@/types/flight";
+import { INTERNATIONAL_AIRPORTS } from "@/lib/internationalAirports";
 
-export const AIRPORTS: Airport[] = [
+const INDIAN_AIRPORTS: Airport[] = [
   { code: "DEL", city: "New Delhi", name: "Indira Gandhi International", aliases: ["delhi"] },
   { code: "BOM", city: "Mumbai", name: "Chhatrapati Shivaji Maharaj International", aliases: ["bombay"] },
   { code: "BLR", city: "Bengaluru", name: "Kempegowda International", aliases: ["bangalore"] },
@@ -125,6 +126,12 @@ export const AIRPORTS: Airport[] = [
   { code: "UKE", city: "Bhawanipatna", name: "Utkela Airport" },
   { code: "VSV", city: "Shravasti", name: "Shravasti Airport" },
 ];
+
+export const AIRPORTS: Airport[] = [...INDIAN_AIRPORTS, ...INTERNATIONAL_AIRPORTS];
+
+export function isIndianAirport(airport: Airport | undefined): boolean {
+  return !airport?.country;
+}
 
 const registry = new Map<string, Airport>();
 

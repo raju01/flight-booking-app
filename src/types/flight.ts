@@ -7,6 +7,7 @@ export interface Airport {
   city: string;
   name: string;
   aliases?: string[];
+  country?: string; // absent for Indian airports
 }
 
 export interface FlightSegment {
@@ -30,6 +31,7 @@ export interface Flight {
   fareTier?: FareTier;
   priceLocked?: boolean;
   bookingUrl?: string; // set for live fares, which are booked on the airline's site rather than here
+  totalDurationMinutes?: number; // live fares: includes layovers
   bookingToken?: string; // live fares only: lets us ask which sellers offer this exact flight
 }
 

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Flight } from "@/types/flight";
 import { formatPrice } from "@/lib/currency";
 import { estimateEmissionsKg } from "@/lib/emissions";
+import { totalDurationMinutes } from "@/lib/flightDuration";
 import { flightBookingLinks } from "@/lib/outboundLinks";
 import FareCompare from "@/components/FareCompare";
 import { ChevronIcon, PlaneIcon, LeafIcon } from "@/components/icons";
@@ -32,6 +33,9 @@ export default function FlightCard({
   const [expanded, setExpanded] = useState(false);
   const [comparing, setComparing] = useState(autoCompare);
   const segment = flight.segments[0];
+  const lastSegment = flight.segments[flight.segments.length - 1];
+  const airlines = [...new Set(flight.segments.map((s) => s.airline))];
+  const layovers = flight.segments.slice(0, -1).map((s) => s.to.code);
   const lowSeats = flight.seatsLeft !== undefined && flight.seatsLeft <= 3;
   const emissionsKg = useMemo(() => estimateEmissionsKg(flight), [flight]);
   const { primary, secondary } = flightBookingLinks(flight);
@@ -52,25 +56,27 @@ export default function FlightCard({
             <p className="text-xs text-slate-500">{segment.from.code}</p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-slate-400">{formatDuration(segment.durationMinutes)}</p>
+            <p className="text-xs text-slate-400">{formatDuration(totalDurationMinutes(flight))}</p>
             <div className="flex items-center gap-1 my-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-300" />
               <div className="flex-1 h-px bg-gradient-to-r from-indigo-300 via-fuchsia-300 to-indigo-300" />
               <PlaneIcon className="w-3.5 h-3.5 text-fuchsia-400 rotate-90" />
             </div>
             <p className="text-xs text-slate-400">
-              {flight.stops === 0 ? "Nonstop" : `${flight.stops} stop`}
+              {flight.stops === 0
+                ? "Nonstop"
+                : `${flight.stops} stop${flight.stops > 1 ? "s" : ""}${layovers.length ? ` · ${layovers.join(", ")}` : ""}`}
             </p>
           </div>
           <div>
-            <p className="text-lg font-bold text-slate-900">{formatTime(segment.arrivalTime)}</p>
-            <p className="text-xs text-slate-500">{segment.to.code}</p>
+            <p className="text-lg font-bold text-slate-900">{formatTime(lastSegment.arrivalTime)}</p>
+            <p className="text-xs text-slate-500">{lastSegment.to.code}</p>
           </div>
         </div>
 
         <div className="text-sm text-slate-600 sm:w-40">
-          <p className="font-semibold text-slate-800">{segment.airline}</p>
-          <p className="text-xs">{segment.flightNumber}</p>
+          <p className="font-semibold text-slate-800">{airlines.join(" + ")}</p>
+          <p className="text-xs">{flight.segments.map((s) => s.flightNumber).join(" · ")}</p>
           {flight.seatsLeft !== undefined && (
             <p
               className={`text-xs mt-1 font-medium ${
@@ -162,14 +168,14 @@ export default function FlightCard({
           <div className="px-4 sm:px-5 pb-4 sm:pb-5 border-t border-slate-100 pt-3 flex flex-col gap-4">
             <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm text-slate-600">
               <dt className="text-slate-400">Aircraft</dt>
-              <dd>{segment.airline} fleet</dd>
+              <dd>{airlines.join(" + ")} fleet</dd>
               <dt className="text-slate-400">Cabin</dt>
               <dd>{flight.cabinClass}</dd>
               <dt className="text-slate-400">Flight</dt>
-              <dd>{segment.flightNumber}</dd>
+              <dd>{flight.segments.map((s) => s.flightNumber).join(" · ")}</dd>
               <dt className="text-slate-400">Route</dt>
               <dd>
-                {segment.from.city} → {segment.to.city}
+                {segment.from.city} → {lastSegment.to.city}
               </dd>
             </dl>
             <p className="text-xs text-slate-500 leading-relaxed">

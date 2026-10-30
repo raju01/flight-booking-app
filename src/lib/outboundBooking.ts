@@ -1,3 +1,4 @@
+import { findAirport, isIndianAirport } from "@/lib/airports";
 import { redbusCity } from "@/lib/redbusCities";
 
 // Server only. The Cuelinks channel id and tracker template are private env vars, so this module
@@ -49,6 +50,8 @@ function slug(value: string): string {
 
 // MakeMyTrip Flights is a Cuelinks campaign (paid per click). The search URL is the deeplink.
 function makeMyTripSearchUrl(from: string, to: string, date: string, cabinClass: string): string {
+  // MakeMyTrip uses a different search for flights that leave India or arrive from abroad.
+  const international = !isIndianAirport(findAirport(from)) || !isIndianAirport(findAirport(to));
   const [year, month, day] = date.split("-");
   const cabin =
     cabinClass === "Business" || cabinClass === "First"
@@ -59,7 +62,7 @@ function makeMyTripSearchUrl(from: string, to: string, date: string, cabinClass:
   const query = new URLSearchParams({
     tripType: "O",
     paxType: "A-1_C-0_I-0",
-    intl: "false",
+    intl: String(international),
     cabinClass: cabin,
     ccde: "IN",
     lang: "eng",

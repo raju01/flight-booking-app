@@ -16,6 +16,17 @@ const POPULAR_ROUTES: [string, string][] = [
   ["BOM", "BLR"],
 ];
 
+const INTERNATIONAL_ROUTES: [string, string][] = [
+  ["DEL", "DXB"],
+  ["BOM", "DXB"],
+  ["DEL", "LHR"],
+  ["BOM", "SIN"],
+  ["BLR", "SIN"],
+  ["DEL", "BKK"],
+  ["DEL", "JFK"],
+  ["BOM", "LHR"],
+];
+
 const STEPS = [
   { title: "Search", text: "Pick your route and date. We pull live fares for every flight." },
   { title: "Compare sellers", text: "See the same flight priced by the airline and booking sites, cheapest first." },
@@ -51,6 +62,29 @@ function futureDate(days: number): string {
 
 const subscribe = () => () => {};
 
+function RouteGrid({ routes, date }: { routes: [string, string][]; date: string }) {
+  return (
+    <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {routes.map(([from, to]) => (
+        <Link
+          key={`${from}-${to}`}
+          href={searchHref(from, to, date)}
+          className="group rounded-2xl bg-white border border-slate-200 p-4 transition-all hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-100"
+        >
+          <div className="flex items-center gap-2 text-lg font-extrabold text-slate-900">
+            {from}
+            <PlaneIcon className="w-4 h-4 text-fuchsia-400 rotate-90 transition-transform group-hover:translate-x-1" />
+            {to}
+          </div>
+          <p className="mt-1 text-xs text-slate-500 truncate">
+            {findAirport(from)?.city} to {findAirport(to)?.city}
+          </p>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 export default function HomeSections() {
   // Empty on the server and first render, so server and browser agree whatever day it is.
   const date = useSyncExternalStore(subscribe, () => futureDate(14), () => "");
@@ -60,25 +94,11 @@ export default function HomeSections() {
       <section>
         <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Popular routes</h2>
         <p className="mt-1 text-slate-500">One tap to see today&rsquo;s fares, two weeks from now.</p>
-        <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {POPULAR_ROUTES.map(([from, to]) => (
-            <Link
-              key={`${from}-${to}`}
-              href={searchHref(from, to, date)}
-              className="group rounded-2xl bg-white border border-slate-200 p-4 transition-all hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-100"
-            >
-              <div className="flex items-center gap-2 text-lg font-extrabold text-slate-900">
-                {from}
-                <PlaneIcon className="w-4 h-4 text-fuchsia-400 rotate-90 transition-transform group-hover:translate-x-1" />
-                {to}
-              </div>
-              <p className="mt-1 text-xs text-slate-500 truncate">
-                {findAirport(from)?.city} to {findAirport(to)?.city}
-              </p>
-            </Link>
-          ))}
-        </div>
+        <RouteGrid routes={POPULAR_ROUTES} date={date} />
+        <h3 className="mt-8 text-lg font-bold text-slate-900">International</h3>
+        <RouteGrid routes={INTERNATIONAL_ROUTES} date={date} />
       </section>
+
 
       <section>
         <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">How it works</h2>

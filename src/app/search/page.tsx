@@ -12,6 +12,7 @@ import DataSourceBadge from "@/components/DataSourceBadge";
 import { DataSource, fetchFlights } from "@/lib/liveApi";
 import { lowestEmissionsId } from "@/lib/emissions";
 import { layoverMinutes } from "@/lib/layover";
+import { totalDurationMinutes } from "@/lib/flightDuration";
 import { addFareAlert, findFareAlert, removeFareAlert } from "@/lib/fareAlerts";
 import { BellIcon } from "@/components/icons";
 import { findAirport, formatAirport } from "@/lib/airports";
@@ -584,7 +585,7 @@ function bestScore(flight: Flight, priceRange: [number, number], durationRange: 
   const priceScore = maxPrice > minPrice ? (flight.price - minPrice) / (maxPrice - minPrice) : 0;
   const durationScore =
     maxDuration > minDuration
-      ? (flight.segments[0].durationMinutes - minDuration) / (maxDuration - minDuration)
+      ? (totalDurationMinutes(flight) - minDuration) / (maxDuration - minDuration)
       : 0;
   const stopsScore = flight.stops > 0 ? 1 : 0;
   return priceScore * 0.5 + durationScore * 0.35 + stopsScore * 0.15;
@@ -594,12 +595,12 @@ function sortFlights(flights: Flight[], sortBy: SortBy) {
   const copy = [...flights];
   if (sortBy === "price") return copy.sort((a, b) => a.price - b.price);
   if (sortBy === "duration") {
-    return copy.sort((a, b) => a.segments[0].durationMinutes - b.segments[0].durationMinutes);
+    return copy.sort((a, b) => totalDurationMinutes(a) - totalDurationMinutes(b));
   }
 
   if (copy.length === 0) return copy;
   const prices = copy.map((f) => f.price);
-  const durations = copy.map((f) => f.segments[0].durationMinutes);
+  const durations = copy.map(totalDurationMinutes);
   const priceRange: [number, number] = [Math.min(...prices), Math.max(...prices)];
   const durationRange: [number, number] = [Math.min(...durations), Math.max(...durations)];
   return copy.sort(

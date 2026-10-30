@@ -28,6 +28,7 @@ interface SerpOption {
     flight_number: string;
   }[];
   price?: number;
+  total_duration?: number;
   booking_token?: string;
 }
 
@@ -66,6 +67,7 @@ function toFlight(option: SerpOption, cabinClass: CabinClass): Flight | null {
 
   return {
     bookingUrl,
+    totalDurationMinutes: option.total_duration,
     bookingToken: option.booking_token,
     id: `${segments.map((s) => s.flightNumber).join("-")}-${segments[0].departureTime}`,
     stops: segments.length - 1,

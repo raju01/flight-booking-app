@@ -10,12 +10,14 @@ function matchScore(airport: Airport, query: string): number {
   const city = airport.city.toLowerCase();
   const name = airport.name.toLowerCase();
   const aliases = airport.aliases ?? [];
+  const country = airport.country?.toLowerCase() ?? "india";
 
   if (code === q) return 0;
   if (code.startsWith(q)) return 1;
   if (city.startsWith(q) || aliases.some((a) => a.startsWith(q))) return 2;
   if (city.includes(q) || aliases.some((a) => a.includes(q))) return 3;
   if (name.includes(q)) return 4;
+  if (country.startsWith(q)) return 5;
   return -1;
 }
 
@@ -25,7 +27,7 @@ function searchAirports(query: string, exclude?: string): Airport[] {
   return AIRPORTS.map((a) => ({ airport: a, score: matchScore(a, trimmed) }))
     .filter((r) => r.score >= 0 && r.airport.code !== exclude)
     .sort((a, b) => a.score - b.score || a.airport.city.localeCompare(b.airport.city))
-    .slice(0, 8)
+    .slice(0, 10)
     .map((r) => r.airport);
 }
 
@@ -158,7 +160,10 @@ export default function AirportAutocomplete({
                   <p className="text-sm font-medium text-slate-800 truncate">
                     {airport.city}
                   </p>
-                  <p className="text-xs text-slate-500 truncate">{airport.name}</p>
+                  <p className="text-xs text-slate-500 truncate">
+                    {airport.country ? `${airport.country} · ` : ""}
+                    {airport.name}
+                  </p>
                 </div>
                 <span
                   className={`text-xs font-mono font-semibold rounded-full px-2 py-0.5 shrink-0 ${styles.badge}`}

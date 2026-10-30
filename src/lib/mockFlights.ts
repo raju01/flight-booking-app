@@ -1,5 +1,5 @@
 import { Flight, CabinClass } from "@/types/flight";
-import { findAirport } from "@/lib/airports";
+import { findAirport, isIndianAirport } from "@/lib/airports";
 import { seededRandom, seedFromString, pad } from "@/lib/seededRandom";
 
 const AIRLINES = [
@@ -9,6 +9,15 @@ const AIRLINES = [
   { name: "Vistara", code: "UK" },
   { name: "Akasa Air", code: "QP" },
   { name: "Air India Express", code: "IX" },
+];
+
+const INTERNATIONAL_AIRLINES = [
+  { name: "Air India", code: "AI" },
+  { name: "IndiGo", code: "6E" },
+  { name: "Emirates", code: "EK" },
+  { name: "Qatar Airways", code: "QR" },
+  { name: "Singapore Airlines", code: "SQ" },
+  { name: "Etihad", code: "EY" },
 ];
 
 const CABIN_MULTIPLIER: Record<CabinClass, number> = {
@@ -28,22 +37,28 @@ export function generateMockFlights(params: {
   const toAirport = findAirport(params.to);
   if (!fromAirport || !toAirport) return [];
 
+  const international = !isIndianAirport(fromAirport) || !isIndianAirport(toAirport);
+  const airlines = international ? INTERNATIONAL_AIRLINES : AIRLINES;
   const rand = seededRandom(seedFromString(`${params.from}${params.to}${params.date}`));
 
   const count = 6 + Math.floor(rand() * 4);
   const flights: Flight[] = [];
 
   for (let i = 0; i < count; i++) {
-    const airline = AIRLINES[Math.floor(rand() * AIRLINES.length)];
+    const airline = airlines[Math.floor(rand() * airlines.length)];
     const stops = rand() > 0.6 ? 1 : 0;
-    const durationMinutes = 90 + Math.floor(rand() * 600) + stops * 120;
+    const durationMinutes = international
+      ? 240 + Math.floor(rand() * 600) + stops * 150
+      : 90 + Math.floor(rand() * 600) + stops * 120;
     const departHour = Math.floor(rand() * 24);
     const departMinute = Math.floor(rand() * 60);
 
     const departureTime = new Date(`${params.date}T${pad(departHour)}:${pad(departMinute)}:00`);
     const arrivalTime = new Date(departureTime.getTime() + durationMinutes * 60000);
 
-    const basePrice = 2500 + Math.floor(rand() * 7000) + stops * -600;
+    const basePrice = international
+      ? 14000 + Math.floor(rand() * 36000) + stops * -2500
+      : 2500 + Math.floor(rand() * 7000) + stops * -600;
     const price = Math.round((basePrice * CABIN_MULTIPLIER[params.cabinClass]) / 10) * 10;
 
     flights.push({
