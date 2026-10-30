@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Flight } from "@/types/flight";
 import { formatPrice } from "@/lib/currency";
 import { estimateEmissionsKg } from "@/lib/emissions";
-import { flightBookingLinks } from "@/lib/outboundBooking";
+import { flightBookingLinks } from "@/lib/outboundLinks";
 import { ChevronIcon, PlaneIcon, LeafIcon } from "@/components/icons";
 
 function formatTime(iso: string) {

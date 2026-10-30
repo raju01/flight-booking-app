@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Bus } from "@/types/bus";
 import { formatPrice } from "@/lib/currency";
-import { busBookingLink } from "@/lib/outboundBooking";
+import { busBookingLink } from "@/lib/outboundLinks";
 import { ChevronIcon, StarIcon, BusIcon } from "@/components/icons";
 
 function formatTime(iso: string) {

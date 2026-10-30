@@ -1,21 +1,16 @@
-import { airlineBookingLink } from "@/lib/airlineSites";
 import { redbusCity } from "@/lib/redbusCities";
-import { Flight } from "@/types/flight";
 
-export interface OutboundLink {
-  label: string;
-  href: string;
-  seller: string;
-}
+// Server only. The Cuelinks channel id and tracker template are private env vars, so this module
+// must not be imported from a client component. Browsers reach it through /api/out.
 
 // Cuelinks pays only when the click hits linksredirect.com and the destination is an
 // approved campaign. Airline sites and Google Flights are not campaigns, so they are not wrapped.
 const CUELINKS_MERCHANT_HOSTS = ["makemytrip.com", "redbus.in", "cleartrip.com", "goibibo.com"];
 
 function affiliateTemplate(): string | undefined {
-  const explicit = process.env.NEXT_PUBLIC_AFFILIATE_LINK_TEMPLATE?.trim();
+  const explicit = process.env.AFFILIATE_LINK_TEMPLATE?.trim();
   if (explicit?.includes("{url}")) return explicit;
-  const channelId = process.env.NEXT_PUBLIC_CUELINKS_CHANNEL_ID?.trim();
+  const channelId = process.env.CUELINKS_CHANNEL_ID?.trim();
   if (!channelId) return undefined;
   return `https://linksredirect.com/?cid=${encodeURIComponent(channelId)}&source=linkkit&url={url}`;
 }
@@ -50,13 +45,6 @@ function slug(value: string): string {
     .replace(/^-|-$/g, "");
 }
 
-export function googleFlightsSearchUrl(from: string, to: string, date: string): string {
-  return `https://www.google.com/travel/flights?${new URLSearchParams({
-    q: `Flights from ${from} to ${to} on ${date} one way`,
-    curr: "INR",
-  })}`;
-}
-
 // MakeMyTrip Flights is a Cuelinks campaign (paid per click). The search URL is the deeplink.
 function makeMyTripSearchUrl(from: string, to: string, date: string, cabinClass: string): string {
   const [year, month, day] = date.split("-");
@@ -77,46 +65,21 @@ function makeMyTripSearchUrl(from: string, to: string, date: string, cabinClass:
   return `https://www.makemytrip.com/flight/search?itinerary=${from}-${to}-${day}/${month}/${year}&${query}`;
 }
 
-export function flightBookingLinks(flight: Flight): { primary: OutboundLink; secondary?: OutboundLink } {
-  const first = flight.segments[0];
-  const last = flight.segments[flight.segments.length - 1];
-  const date = first.departureTime.slice(0, 10);
-  const from = first.from.code;
-  const to = last.to.code;
-  const googleHref = flight.bookingUrl ?? googleFlightsSearchUrl(from, to, date);
-  const airlineHref = airlineBookingLink(first.airline);
-  const makeMyTripHref = withAffiliate(makeMyTripSearchUrl(from, to, date, flight.cabinClass));
+export interface FlightLinkParams {
+  from: string;
+  to: string;
+  date: string;
+  airline: string;
+  cabinClass: string;
+}
+
+export function flightPartnerUrl({ from, to, date, airline, cabinClass }: FlightLinkParams): string {
   const partnerTemplate = process.env.NEXT_PUBLIC_FLIGHT_PARTNER_URL?.trim();
   const partnerName = process.env.NEXT_PUBLIC_FLIGHT_PARTNER_NAME?.trim();
-
-  const google: OutboundLink = {
-    label: "View on Google Flights",
-    href: googleHref,
-    seller: "Google Flights",
-  };
-
   if (partnerTemplate && partnerName) {
-    const partner: OutboundLink = {
-      label: `Book on ${partnerName}`,
-      href: withAffiliate(
-        fill(partnerTemplate, { from, to, date, airline: first.airline })
-      ),
-      seller: partnerName,
-    };
-    return {
-      primary: partner,
-      secondary: airlineHref
-        ? { label: `Book on ${first.airline}`, href: airlineHref, seller: first.airline }
-        : google,
-    };
+    return withAffiliate(fill(partnerTemplate, { from, to, date, airline }));
   }
-
-  return {
-    primary: { label: "Book on MakeMyTrip", href: makeMyTripHref, seller: "MakeMyTrip" },
-    secondary: airlineHref
-      ? { label: `${first.airline} site`, href: airlineHref, seller: first.airline }
-      : google,
-  };
+  return withAffiliate(makeMyTripSearchUrl(from, to, date, cabinClass));
 }
 
 const REDBUS_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -126,11 +89,9 @@ function redbusOnward(isoDate: string): string {
   return `${day}-${REDBUS_MONTHS[Number(month) - 1]}-${year}`;
 }
 
-export function busBookingLink(bus: { from: string; to: string; departureTime: string }): OutboundLink {
-  const date = bus.departureTime.slice(0, 10);
+export function busPartnerUrl(bus: { from: string; to: string; date: string }): string {
   const fromCity = redbusCity(bus.from);
   const toCity = redbusCity(bus.to);
-  const seller = process.env.NEXT_PUBLIC_BUS_PARTNER_NAME?.trim() || "redBus";
   const template = process.env.NEXT_PUBLIC_BUS_PARTNER_URL?.trim();
 
   let href: string;
@@ -142,7 +103,7 @@ export function busBookingLink(bus: { from: string; to: string; departureTime: s
       toSlug: toCity?.slug ?? slug(bus.to),
       fromId: fromCity?.id ?? "",
       toId: toCity?.id ?? "",
-      date,
+      date: bus.date,
     });
   } else if (fromCity && toCity) {
     const query = new URLSearchParams({
@@ -150,7 +111,7 @@ export function busBookingLink(bus: { from: string; to: string; departureTime: s
       fromCityName: fromCity.name,
       toCityId: toCity.id,
       toCityName: toCity.name,
-      onward: redbusOnward(date),
+      onward: redbusOnward(bus.date),
       srcCountry: "IND",
       destCountry: "IND",
     });
@@ -161,5 +122,5 @@ export function busBookingLink(bus: { from: string; to: string; departureTime: s
     href = "https://www.redbus.in/";
   }
 
-  return { label: `Book on ${seller}`, href: withAffiliate(href), seller };
+  return withAffiliate(href);
 }
