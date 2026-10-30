@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import AirportAutocomplete from "@/components/AirportAutocomplete";
 import TravelerSelector from "@/components/TravelerSelector";
 import RecentSearches from "@/components/RecentSearches";
@@ -12,9 +12,14 @@ import { TravelerCounts, totalTravelers } from "@/types/traveler";
 import { addSearchHistoryEntry } from "@/lib/searchHistory";
 import { SearchHistoryEntry } from "@/types/searchHistory";
 
+import { futureDate } from "@/lib/dates";
+
+// Local calendar day: the UTC date is the wrong day for the first hours of every morning in India.
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  return futureDate(0);
 }
+
+const subscribe = () => () => {};
 
 const inputClass =
   "w-full border-2 border-slate-200 rounded-2xl px-4 py-2.5 bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900 transition-colors focus:outline-none focus:border-indigo-400";
@@ -33,8 +38,16 @@ export default function SearchForm() {
   const [tripType, setTripType] = useState<TripType>("round-trip");
   const [from, setFrom] = useState("DEL");
   const [to, setTo] = useState("BOM");
-  const [departDate, setDepartDate] = useState(todayISO());
-  const [returnDate, setReturnDate] = useState(todayISO());
+  // Empty on the server and first render so the page hydrates cleanly whatever day it is; the user's
+  // own picks (the *Edit values) always win over these defaults.
+  const today = useSyncExternalStore(subscribe, () => futureDate(0), () => "");
+  const defaultDepart = useSyncExternalStore(subscribe, () => futureDate(7), () => "");
+  const defaultReturn = useSyncExternalStore(subscribe, () => futureDate(14), () => "");
+  const [departEdit, setDepartDate] = useState<string | null>(null);
+  const [returnEdit, setReturnDate] = useState<string | null>(null);
+  const departDate = departEdit ?? defaultDepart;
+  const pickedReturn = returnEdit ?? defaultReturn;
+  const returnDate = pickedReturn < departDate ? departDate : pickedReturn;
   const [travelers, setTravelers] = useState<TravelerCounts>({ adults: 1, children: 0, infants: 0 });
   const [cabinClass, setCabinClass] = useState<CabinClass>("Economy");
   const [error, setError] = useState("");
@@ -200,7 +213,7 @@ export default function SearchForm() {
               <input
                 type="date"
                 value={departDate}
-                min={todayISO()}
+                min={today}
                 onChange={(e) => setDepartDate(e.target.value)}
                 className={inputClass}
                 required
@@ -273,7 +286,7 @@ export default function SearchForm() {
                 <input
                   type="date"
                   value={leg.date}
-                  min={i > 0 ? legs[i - 1].date : todayISO()}
+                  min={i > 0 ? legs[i - 1].date : today}
                   onChange={(e) => updateLeg(i, "date", e.target.value)}
                   className={inputClass}
                   required
