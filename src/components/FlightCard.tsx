@@ -5,6 +5,7 @@ import { Flight } from "@/types/flight";
 import { formatPrice } from "@/lib/currency";
 import { estimateEmissionsKg } from "@/lib/emissions";
 import { flightBookingLinks } from "@/lib/outboundLinks";
+import FareCompare from "@/components/FareCompare";
 import { ChevronIcon, PlaneIcon, LeafIcon } from "@/components/icons";
 
 function formatTime(iso: string) {
@@ -27,6 +28,7 @@ export default function FlightCard({
   style?: React.CSSProperties;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [comparing, setComparing] = useState(false);
   const segment = flight.segments[0];
   const lowSeats = flight.seatsLeft !== undefined && flight.seatsLeft <= 3;
   const emissionsKg = useMemo(() => estimateEmissionsKg(flight), [flight]);
@@ -106,18 +108,31 @@ export default function FlightCard({
 
       <div className="px-4 sm:px-5 pb-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
         <p className="text-xs text-slate-500">
-          {primary.seller} handles payment, ticket, and changes.
+          {flight.bookingToken
+            ? "Compare sellers, then book with the one you pick."
+            : `${primary.seller} handles payment, ticket, and changes.`}
         </p>
         <div className="flex flex-wrap gap-2">
-          <a
-            href={primary.href}
-            target="_blank"
-            rel="noopener noreferrer sponsored"
-            className="bg-gradient-to-r from-indigo-600 to-fuchsia-500 hover:shadow-lg hover:shadow-violet-300/50 active:scale-95 text-white text-sm font-bold rounded-full px-5 py-2.5 transition-all"
-          >
-            {primary.label}
-          </a>
-          {secondary && (
+          {flight.bookingToken ? (
+            <button
+              type="button"
+              onClick={() => setComparing((v) => !v)}
+              aria-expanded={comparing}
+              className="bg-gradient-to-r from-indigo-600 to-fuchsia-500 hover:shadow-lg hover:shadow-violet-300/50 active:scale-95 text-white text-sm font-bold rounded-full px-5 py-2.5 transition-all cursor-pointer"
+            >
+              {comparing ? "Hide prices" : "Compare prices & book"}
+            </button>
+          ) : (
+            <a
+              href={primary.href}
+              target="_blank"
+              rel="noopener noreferrer sponsored"
+              className="bg-gradient-to-r from-indigo-600 to-fuchsia-500 hover:shadow-lg hover:shadow-violet-300/50 active:scale-95 text-white text-sm font-bold rounded-full px-5 py-2.5 transition-all"
+            >
+              {primary.label}
+            </a>
+          )}
+          {!flight.bookingToken && secondary && (
             <a
               href={secondary.href}
               target="_blank"
@@ -129,6 +144,10 @@ export default function FlightCard({
           )}
         </div>
       </div>
+
+      {comparing && flight.bookingToken && (
+        <FareCompare flight={flight} alternatives={[primary, ...(secondary ? [secondary] : [])]} />
+      )}
 
       <div
         className={`grid transition-all duration-300 ease-in-out ${

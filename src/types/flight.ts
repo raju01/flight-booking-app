@@ -30,6 +30,15 @@ export interface Flight {
   fareTier?: FareTier;
   priceLocked?: boolean;
   bookingUrl?: string; // set for live fares, which are booked on the airline's site rather than here
+  bookingToken?: string; // live fares only: lets us ask which sellers offer this exact flight
+}
+
+// One seller's price for a flight. Booking is a form POST to `url` with `postData` as its fields.
+export interface FlightOffer {
+  seller: string;
+  price: number;
+  url: string;
+  postData: string;
 }
 
 export interface SearchParams {

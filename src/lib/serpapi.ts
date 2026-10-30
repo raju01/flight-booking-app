@@ -1,4 +1,4 @@
-import { CabinClass, Flight, FlightSegment } from "@/types/flight";
+import { CabinClass, Flight, FlightOffer, FlightSegment } from "@/types/flight";
 import { findAirport } from "@/lib/airports";
 
 const REQUEST_TIMEOUT_MS = 30000;
@@ -28,6 +28,7 @@ interface SerpOption {
     flight_number: string;
   }[];
   price?: number;
+  booking_token?: string;
 }
 
 export function isSerpApiConfigured(): boolean {
@@ -65,6 +66,7 @@ function toFlight(option: SerpOption, cabinClass: CabinClass): Flight | null {
 
   return {
     bookingUrl,
+    bookingToken: option.booking_token,
     id: `${segments.map((s) => s.flightNumber).join("-")}-${segments[0].departureTime}`,
     stops: segments.length - 1,
     price: option.price,
@@ -129,4 +131,66 @@ export async function searchSerpApiFlights(params: {
   }
   searchCache.set(key, { at: Date.now(), flights });
   return flights;
+}
+
+// Google only hands out booking links on its own click-tracking host, so nothing else is accepted.
+const GOOGLE_CLICK_URL = "https://www.google.com/travel/clk/";
+
+interface SerpBookingOption {
+  together?: {
+    book_with?: string;
+    price?: number;
+    booking_request?: { url?: string; post_data?: string };
+  };
+}
+
+const offersCache = new Map<string, { at: number; offers: FlightOffer[] }>();
+
+// Lists every seller Google knows for one flight, cheapest first. This is a second SerpApi credit,
+// so the UI only asks when someone opens the comparison. The token is tied to the search that made it.
+export async function fetchFlightOffers(params: {
+  from: string;
+  to: string;
+  date: string;
+  cabinClass: CabinClass;
+  token: string;
+}): Promise<FlightOffer[]> {
+  const cached = offersCache.get(params.token);
+  if (cached && Date.now() - cached.at < SEARCH_CACHE_TTL_MS) return cached.offers;
+
+  const query = new URLSearchParams({
+    engine: "google_flights",
+    departure_id: params.from,
+    arrival_id: params.to,
+    outbound_date: params.date,
+    type: "2",
+    travel_class: TRAVEL_CLASS[params.cabinClass],
+    currency: "INR",
+    hl: "en",
+    gl: "in",
+    booking_token: params.token,
+    api_key: process.env.SERPAPI_API_KEY ?? "",
+  });
+  const res = await fetch(`https://serpapi.com/search?${query}`, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  const body = (await res.json().catch(() => ({}))) as { error?: string; booking_options?: SerpBookingOption[] };
+  if (body.error) throw new Error(`SerpApi: ${body.error}`);
+  if (!res.ok) throw new Error(`SerpApi ${res.status}`);
+
+  const offers: FlightOffer[] = [];
+  for (const option of body.booking_options ?? []) {
+    const o = option.together;
+    const request = o?.booking_request;
+    if (!o?.book_with || typeof o.price !== "number" || !request?.url?.startsWith(GOOGLE_CLICK_URL)) continue;
+    offers.push({ seller: o.book_with, price: o.price, url: request.url, postData: request.post_data ?? "" });
+  }
+  offers.sort((a, b) => a.price - b.price);
+
+  if (offersCache.size >= SEARCH_CACHE_MAX_ENTRIES) {
+    offersCache.delete(offersCache.keys().next().value as string);
+  }
+  offersCache.set(params.token, { at: Date.now(), offers });
+  return offers;
 }
