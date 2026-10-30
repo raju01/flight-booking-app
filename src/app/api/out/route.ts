@@ -36,6 +36,17 @@ export async function GET(request: NextRequest) {
   // Untracked when no tracker is configured (href === plain) or Cuelinks is not accepting clicks.
   if (href !== plain && !(await trackerWorks(href))) href = plain;
 
+  console.log(
+    JSON.stringify({
+      type: "skybook_event",
+      at: new Date().toISOString(),
+      event: "partner_click",
+      kind: type,
+      route: `${from}-${to}`,
+      tracked: href !== plain,
+    })
+  );
+
   return new Response(null, {
     status: 302,
     headers: { Location: href, "Cache-Control": "no-store", "X-Robots-Tag": "noindex" },

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Flight, FlightOffer } from "@/types/flight";
 import { formatPrice } from "@/lib/currency";
 import { OutboundLink } from "@/lib/outboundLinks";
+import { trackEvent } from "@/lib/track";
 
 type State =
   | { status: "loading" }
@@ -166,7 +167,18 @@ export default function FareCompare({
                     <p className="text-sm sm:text-base font-extrabold text-slate-900">{formatPrice(offer.price)}</p>
                     <button
                       type="button"
-                      onClick={() => bookWith(offer)}
+                      onClick={() => {
+                        trackEvent({
+                          event: "offer_click",
+                          seller: offer.seller,
+                          price: offer.price,
+                          rank: index + 1,
+                          sellers: offers.length,
+                          savings: offer.price - lowest.price,
+                          route: `${flight.segments[0].from.code}-${flight.segments[flight.segments.length - 1].to.code}`,
+                        });
+                        bookWith(offer);
+                      }}
                       className={`text-sm font-bold rounded-full px-3 sm:px-4 py-2 transition-all active:scale-95 cursor-pointer ${
                         index === 0
                           ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:shadow-lg hover:shadow-emerald-200"
