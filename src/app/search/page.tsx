@@ -21,6 +21,7 @@ import { timeOfDayRange, TimeOfDay } from "@/lib/timeOfDay";
 import { PlaneIcon } from "@/components/icons";
 import PriceInsightBanner from "@/components/PriceInsightBanner";
 import SortTabs, { SortSummary } from "@/components/SortTabs";
+import DateChangeDialog, { DateChange } from "@/components/DateChangeDialog";
 import { CabinClass, Flight, PriceInsights } from "@/types/flight";
 import { MultiCityLeg } from "@/types/multiCity";
 import { TravelerCounts, totalTravelers } from "@/types/traveler";
@@ -175,9 +176,28 @@ function SearchResults() {
   const fromAirport = findAirport(from);
   const toAirport = findAirport(to);
 
+  // A different travel date is a different search, so the visitor confirms it first.
+  const [pendingChange, setPendingChange] = useState<DateChange | null>(null);
+
+  function askToChangeDate(
+    field: "departDate" | "returnDate",
+    newDate: string,
+    prices: { selected: number | null; chosen: number | null }
+  ) {
+    setPendingChange({
+      field,
+      from: field === "departDate" ? departDate : (returnDate ?? departDate),
+      to: newDate,
+      fromPrice: prices.selected,
+      toPrice: prices.chosen,
+    });
+  }
+
   function handleSelectDate(field: "departDate" | "returnDate", newDate: string) {
     const params = new URLSearchParams(searchParams.toString());
     params.set(field, newDate);
+    // A return flight cannot leave before the outbound one.
+    if (field === "departDate" && returnDate && newDate > returnDate) params.set("returnDate", newDate);
     router.push(`/search?${params.toString()}`);
   }
 
@@ -377,6 +397,7 @@ function SearchResults() {
             <PriceInsightBanner
               insights={results.insights}
               party={travelers}
+              travelDate={departDate}
               lowestPrice={Math.min(...outboundFlights.map((f) => f.price))}
             />
           )}
@@ -389,7 +410,8 @@ function SearchResults() {
               to={to}
               date={departDate}
               cabinClass={cabinClass}
-              onSelectDate={(d) => handleSelectDate("departDate", d)}
+              travelers={travelers}
+              onSelectDate={(d, prices) => askToChangeDate("departDate", d, prices)}
             />
             {sortSummary && !isLoading && (
               <SortTabs value={sortBy} onChange={setSortBy} summary={sortSummary} />
@@ -405,13 +427,25 @@ function SearchResults() {
                 to={from}
                 date={returnDate}
                 cabinClass={cabinClass}
-                onSelectDate={(d) => handleSelectDate("returnDate", d)}
+                travelers={travelers}
+                onSelectDate={(d, prices) => askToChangeDate("returnDate", d, prices)}
               />
               <FlightList flights={sortedReturn} isLoading={isLoading} />
             </section>
           )}
         </div>
       </div>
+      {pendingChange && (
+        <DateChangeDialog
+          change={pendingChange}
+          onCancel={() => setPendingChange(null)}
+          onConfirm={() => {
+            const { field, to } = pendingChange;
+            setPendingChange(null);
+            handleSelectDate(field, to);
+          }}
+        />
+      )}
     </div>
   );
 }

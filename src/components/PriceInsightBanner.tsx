@@ -37,10 +37,12 @@ export default function PriceInsightBanner({
   insights,
   lowestPrice,
   party,
+  travelDate,
 }: {
   insights: PriceInsights;
   lowestPrice: number;
   party?: TravelerCounts;
+  travelDate?: string;
 }) {
   const style = STYLES[insights.level];
   return (
@@ -66,7 +68,7 @@ export default function PriceInsightBanner({
         <span>Usual range</span>
         <span>Pricier</span>
       </div>
-      <PriceHistoryChart insights={insights} />
+      <PriceHistoryChart insights={insights} travelDate={travelDate} />
     </div>
   );
 }

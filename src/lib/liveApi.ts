@@ -13,12 +13,14 @@ interface FlightQuery {
   cabinClass: CabinClass;
   passengers: number;
   travelers?: TravelerCounts;
+  load?: boolean; // fare calendar only: the visitor asked for live prices
 }
 
-function toQueryString({ travelers, ...query }: FlightQuery) {
+function toQueryString({ travelers, load, ...query }: FlightQuery) {
   return new URLSearchParams({
     ...query,
     passengers: String(query.passengers),
+    ...(load && { load: "1" }),
     ...(travelers && {
       adults: String(travelers.adults),
       children: String(travelers.children),

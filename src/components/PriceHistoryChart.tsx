@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { PriceInsights } from "@/types/flight";
 import { formatPrice } from "@/lib/currency";
+import { parseISODate } from "@/lib/dates";
 
 // Timestamps are midnight India time, so format them there whatever the visitor's timezone.
 function formatDay(seconds: number): string {
@@ -18,7 +19,10 @@ const PAD = 8; // vertical padding, in percent of the chart height
 
 // Daily lowest fare for the route with the usual range shaded behind it. Drag across it (mouse, touch
 // or arrow keys) to read the fare for any day.
-export default function PriceHistoryChart({ insights }: { insights: PriceInsights }) {
+export default function PriceHistoryChart({ insights, travelDate }: { insights: PriceInsights; travelDate?: string }) {
+  const trip = travelDate
+    ? parseISODate(travelDate)?.toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+    : undefined;
   const history = insights.history;
   const areaRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState<number | null>(null);
@@ -62,7 +66,9 @@ export default function PriceHistoryChart({ insights }: { insights: PriceInsight
     <div className="mt-4">
       <div className="flex items-baseline justify-between gap-3 text-xs">
         <span className="font-semibold text-slate-700">
-          {active === null ? `Lowest fare, last ${days} days` : formatDay(seconds)}
+          {active === null
+            ? `Lowest fare seen each day, last ${days} days`
+            : `On ${formatDay(seconds)}${shown === last ? " (today)" : ""}`}
         </span>
         <span className="text-slate-600">
           {active === null ? (
@@ -71,7 +77,7 @@ export default function PriceHistoryChart({ insights }: { insights: PriceInsight
             </>
           ) : (
             <>
-              <strong className="text-slate-900">{formatPrice(price)}</strong>
+              the {trip ? `${trip} ` : ""}fare was <strong className="text-slate-900">{formatPrice(price)}</strong>
               {shown !== last && (
                 <span className={diff < 0 ? "text-emerald-700" : "text-rose-700"}>
                   {" "}
@@ -79,7 +85,6 @@ export default function PriceHistoryChart({ insights }: { insights: PriceInsight
                   {formatPrice(Math.abs(diff))} vs today)
                 </span>
               )}
-              {shown === last && <span className="text-slate-500"> (today)</span>}
             </>
           )}
         </span>
@@ -137,7 +142,7 @@ export default function PriceHistoryChart({ insights }: { insights: PriceInsight
 
       <div className="mt-1 flex justify-between text-[10px] text-slate-500">
         <span>{formatDay(history[0][0])}</span>
-        <span>{active === null ? "Drag to see each day" : ""}</span>
+        <span>{active === null ? "Drag to see how the fare for your trip changed" : ""}</span>
         <span>Today</span>
       </div>
     </div>

@@ -3,18 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchFareCalendar } from "@/lib/liveApi";
 import { formatPrice } from "@/lib/currency";
+import { addDays, parseISODate } from "@/lib/dates";
 import { CabinClass } from "@/types/flight";
+import { TravelerCounts } from "@/types/traveler";
 
 const SPAN_DAYS = 3;
 
-function addDays(iso: string, days: number) {
-  const d = new Date(`${iso}T00:00:00`);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
 function weekdayLabel(iso: string) {
-  const d = new Date(`${iso}T00:00:00`);
+  const d = parseISODate(iso) ?? new Date();
   return {
     weekday: d.toLocaleDateString("en-IN", { weekday: "short" }),
     dayMonth: d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
@@ -26,33 +22,42 @@ export default function FareCalendar({
   to,
   date,
   cabinClass,
+  travelers,
   onSelectDate,
 }: {
   from: string;
   to: string;
   date: string;
   cabinClass: CabinClass;
-  onSelectDate: (date: string) => void;
+  travelers: TravelerCounts;
+  onSelectDate: (date: string, prices: { selected: number | null; chosen: number | null }) => void;
 }) {
   const dates = useMemo(
     () => Array.from({ length: SPAN_DAYS * 2 + 1 }, (_, i) => addDays(date, i - SPAN_DAYS)),
     [date]
   );
-  const calendarKey = `${from}|${to}|${date}|${cabinClass}`;
+  const { adults, children, infants } = travelers;
+  const calendarKey = `${from}|${to}|${date}|${cabinClass}|${adults}-${children}-${infants}`;
+  // The key of the search the visitor asked live nearby-date fares for (it costs a few lookups).
+  const [requestedKey, setRequestedKey] = useState<string | null>(null);
+  const requested = requestedKey === calendarKey;
   const [loaded, setLoaded] = useState<{ key: string; prices: Map<string, number | null> } | null>(
     null
   );
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchFareCalendar({ from, to, date, cabinClass, passengers: 1 }, controller.signal)
+    fetchFareCalendar(
+      { from, to, date, cabinClass, passengers: adults + children, travelers: { adults, children, infants }, load: requested },
+      controller.signal
+    )
       .then((result) => {
         const prices = new Map((result?.days ?? []).map((d) => [d.date, d.price]));
         setLoaded({ key: calendarKey, prices });
       })
       .catch(() => {}); // aborted by a newer search
     return () => controller.abort();
-  }, [from, to, date, cabinClass, calendarKey]);
+  }, [from, to, date, cabinClass, adults, children, infants, calendarKey, requested]);
 
   // undefined while the prices for this search are still loading
   const days: { date: string; price: number | null | undefined }[] = dates.map((d) => ({
@@ -63,7 +68,29 @@ export default function FareCalendar({
   const validPrices = days.map((d) => d.price).filter((p): p is number => typeof p === "number");
   const cheapest = validPrices.length ? Math.min(...validPrices) : null;
 
-  if (loaded?.key === calendarKey && loaded.prices.size === 0) return null;
+  const nothingLoaded = loaded?.key === calendarKey && loaded.prices.size === 0;
+  if (nothingLoaded && !requested) {
+    // Live fares for each nearby date are separate lookups, so they load on request.
+    return (
+      <div className="glass-card rounded-2xl p-4 mb-6 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-slate-600">Flexible on dates? Compare fares {SPAN_DAYS} days either side.</p>
+        <button
+          type="button"
+          onClick={() => setRequestedKey(calendarKey)}
+          className="rounded-full border-2 border-indigo-200 px-4 py-2 text-sm font-bold text-indigo-700 hover:bg-indigo-50 cursor-pointer"
+        >
+          Compare nearby dates
+        </button>
+      </div>
+    );
+  }
+  if (nothingLoaded && requested) {
+    return (
+      <div className="glass-card rounded-2xl p-4 mb-6 text-sm text-slate-600">
+        Fares for nearby dates are unavailable right now.
+      </div>
+    );
+  }
 
   return (
     <div className="glass-card rounded-2xl p-4 mb-6">
@@ -81,7 +108,13 @@ export default function FareCalendar({
               key={d}
               type="button"
               disabled={isDisabled}
-              onClick={() => onSelectDate(d)}
+              onClick={() =>
+                !isSelected &&
+                onSelectDate(d, {
+                  selected: days.find((x) => x.date === date)?.price ?? null,
+                  chosen: typeof price === "number" ? price : null,
+                })
+              }
               className={`flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-2.5 text-center transition-all cursor-pointer disabled:cursor-not-allowed ${
                 isSelected
                   ? "bg-gradient-to-br from-indigo-600 to-fuchsia-500 text-white shadow-md shadow-violet-300"

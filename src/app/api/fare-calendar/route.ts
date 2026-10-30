@@ -21,8 +21,10 @@ export async function GET(request: NextRequest) {
   const params = parseSearchParams(request.nextUrl.searchParams);
   if (!params) return Response.json({ error: "Invalid search parameters" }, { status: 400 });
 
-  // Each day is a separate paid SerpApi search, so live calendars are opt-in.
-  if (isSerpApiConfigured() && process.env.SERPAPI_FARE_CALENDAR !== "1") {
+  // Each day is a separate paid SerpApi search, so live calendars only load when the site is configured
+  // for it or the visitor explicitly asks (load=1).
+  const requested = request.nextUrl.searchParams.get("load") === "1";
+  if (isSerpApiConfigured() && process.env.SERPAPI_FARE_CALENDAR !== "1" && !requested) {
     return Response.json({ source: "live", days: [] });
   }
 
