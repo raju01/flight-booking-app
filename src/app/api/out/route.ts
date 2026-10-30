@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { busPartnerUrl, flightPartnerUrl } from "@/lib/outboundBooking";
+import { busPartnerUrl, flightPartnerUrl, trackerWorks } from "@/lib/outboundBooking";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -14,20 +14,27 @@ export async function GET(request: NextRequest) {
   if (!DATE.test(date)) return Response.json({ error: "Invalid parameters" }, { status: 400 });
 
   let href: string;
+  let plain: string;
   if (type === "flight") {
     const airline = params.get("airline") ?? "";
     const cabinClass = params.get("cabin") ?? "Economy";
     const valid = /^[A-Z]{3}$/.test(from) && /^[A-Z]{3}$/.test(to) && airline.length <= 60 && cabinClass.length <= 20;
     if (!valid) return Response.json({ error: "Invalid parameters" }, { status: 400 });
-    href = flightPartnerUrl({ from, to, date, airline, cabinClass });
+    const link = { from, to, date, airline, cabinClass };
+    href = flightPartnerUrl(link);
+    plain = flightPartnerUrl(link, false);
   } else if (type === "bus") {
     if (!from || !to || from.length > 60 || to.length > 60) {
       return Response.json({ error: "Invalid parameters" }, { status: 400 });
     }
     href = busPartnerUrl({ from, to, date });
+    plain = busPartnerUrl({ from, to, date }, false);
   } else {
     return Response.json({ error: "Invalid parameters" }, { status: 400 });
   }
+
+  // Untracked when no tracker is configured (href === plain) or Cuelinks is not accepting clicks.
+  if (href !== plain && !(await trackerWorks(href))) href = plain;
 
   return new Response(null, {
     status: 302,

@@ -7,7 +7,9 @@ import { redbusCity } from "@/lib/redbusCities";
 // approved campaign. Airline sites and Google Flights are not campaigns, so they are not wrapped.
 const CUELINKS_MERCHANT_HOSTS = ["makemytrip.com", "redbus.in", "cleartrip.com", "goibibo.com"];
 
+// Off unless AFFILIATE_ENABLED=true, so a pending or rejected channel cannot break the Book buttons.
 function affiliateTemplate(): string | undefined {
+  if (process.env.AFFILIATE_ENABLED?.trim().toLowerCase() !== "true") return undefined;
   const explicit = process.env.AFFILIATE_LINK_TEMPLATE?.trim();
   if (explicit?.includes("{url}")) return explicit;
   const channelId = process.env.CUELINKS_CHANNEL_ID?.trim();
@@ -73,13 +75,17 @@ export interface FlightLinkParams {
   cabinClass: string;
 }
 
-export function flightPartnerUrl({ from, to, date, airline, cabinClass }: FlightLinkParams): string {
+export function flightPartnerUrl(
+  { from, to, date, airline, cabinClass }: FlightLinkParams,
+  track = true
+): string {
+  const wrap = track ? withAffiliate : (url: string) => url;
   const partnerTemplate = process.env.NEXT_PUBLIC_FLIGHT_PARTNER_URL?.trim();
   const partnerName = process.env.NEXT_PUBLIC_FLIGHT_PARTNER_NAME?.trim();
   if (partnerTemplate && partnerName) {
-    return withAffiliate(fill(partnerTemplate, { from, to, date, airline }));
+    return wrap(fill(partnerTemplate, { from, to, date, airline }));
   }
-  return withAffiliate(makeMyTripSearchUrl(from, to, date, cabinClass));
+  return wrap(makeMyTripSearchUrl(from, to, date, cabinClass));
 }
 
 const REDBUS_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -89,7 +95,7 @@ function redbusOnward(isoDate: string): string {
   return `${day}-${REDBUS_MONTHS[Number(month) - 1]}-${year}`;
 }
 
-export function busPartnerUrl(bus: { from: string; to: string; date: string }): string {
+export function busPartnerUrl(bus: { from: string; to: string; date: string }, track = true): string {
   const fromCity = redbusCity(bus.from);
   const toCity = redbusCity(bus.to);
   const template = process.env.NEXT_PUBLIC_BUS_PARTNER_URL?.trim();
@@ -122,5 +128,29 @@ export function busPartnerUrl(bus: { from: string; to: string; date: string }): 
     href = "https://www.redbus.in/";
   }
 
-  return withAffiliate(href);
+  return track ? withAffiliate(href) : href;
+}
+
+// Cuelinks sends every click to /broken-links while a channel is pending or disabled. Probe once
+// and remember the answer, so users reach the merchant directly until tracking actually works.
+const PROBE_TTL_OK_MS = 5 * 60_000;
+const PROBE_TTL_FAIL_MS = 60_000;
+let probeCache: { ok: boolean; expires: number } | undefined;
+
+export async function trackerWorks(trackedUrl: string): Promise<boolean> {
+  if (probeCache && probeCache.expires > Date.now()) return probeCache.ok;
+  let ok = false;
+  try {
+    const res = await fetch(trackedUrl, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(3000),
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; SkyBook link check)" },
+    });
+    const location = res.headers.get("location") ?? "";
+    ok = res.status >= 300 && res.status < 400 && location !== "" && !location.includes("/broken-links");
+  } catch {
+    ok = false;
+  }
+  probeCache = { ok, expires: Date.now() + (ok ? PROBE_TTL_OK_MS : PROBE_TTL_FAIL_MS) };
+  return ok;
 }
