@@ -140,7 +140,7 @@ export default function AirportAutocomplete({
           className="absolute z-20 mt-2 w-full max-h-64 overflow-auto glass-card rounded-2xl shadow-xl animate-[fadeInUp_0.15s_ease-out] p-1.5"
         >
           {results.length === 0 ? (
-            <li className="px-3 py-2.5 text-sm text-slate-400">No airports found</li>
+            <li className="px-3 py-2.5 text-sm text-slate-500">No airports found</li>
           ) : (
             results.map((airport, i) => (
               <li

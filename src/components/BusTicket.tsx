@@ -78,21 +78,21 @@ export default function BusTicket({
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs border-t border-dashed border-slate-200 pt-4">
           <div>
-            <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-0.5">Date</p>
+            <p className="text-slate-500 uppercase tracking-wide text-[10px] mb-0.5">Date</p>
             <p className="font-semibold text-slate-800">{formatDate(bus.departureTime)}</p>
           </div>
           <div>
-            <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-0.5">Seat type</p>
+            <p className="text-slate-500 uppercase tracking-wide text-[10px] mb-0.5">Seat type</p>
             <p className="font-semibold text-slate-800">{bus.seatType ?? "Not listed"}</p>
           </div>
           <div>
-            <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-0.5">Boarding</p>
+            <p className="text-slate-500 uppercase tracking-wide text-[10px] mb-0.5">Boarding</p>
             <p className="font-semibold text-slate-800">
               {bus.busNumber ? `Gate ${(bus.busNumber.charCodeAt(0) % 12) + 1}` : "See redBus"}
             </p>
           </div>
           <div>
-            <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-0.5">Seat</p>
+            <p className="text-slate-500 uppercase tracking-wide text-[10px] mb-0.5">Seat</p>
             <p className="font-semibold text-slate-800">
               {bus.busNumber ? 1 + (bus.busNumber.length % 40) : "—"}
             </p>
@@ -101,7 +101,7 @@ export default function BusTicket({
 
         {passengers.length > 0 && (
           <div className="mt-4 pt-4 border-t border-dashed border-slate-200">
-            <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-1.5">
+            <p className="text-slate-500 uppercase tracking-wide text-[10px] mb-1.5">
               Passenger{passengers.length > 1 ? "s" : ""}
             </p>
             <div className="flex flex-wrap gap-x-4 gap-y-1">

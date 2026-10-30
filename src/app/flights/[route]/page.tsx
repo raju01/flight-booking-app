@@ -138,7 +138,7 @@ export default async function RoutePage({ params }: { params: Promise<{ route: s
       <section className="mt-10 grid sm:grid-cols-2 gap-4">
         {[from, to].map((airport, i) => (
           <div key={airport.code} className="rounded-2xl bg-white border border-slate-200 p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               {i === 0 ? "Departing from" : "Arriving at"}
             </p>
             <p className="mt-1 text-xl font-extrabold text-slate-900">

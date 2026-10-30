@@ -218,14 +218,14 @@ function StepIndicator({ current }: { current: Step }) {
               className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold transition-colors ${
                 i <= currentIndex
                   ? "bg-gradient-to-br from-emerald-600 to-teal-500 text-white"
-                  : "bg-slate-100 text-slate-400"
+                  : "bg-slate-100 text-slate-500"
               }`}
             >
               {i + 1}
             </span>
             <span
               className={`text-xs font-semibold hidden sm:inline ${
-                i <= currentIndex ? "text-slate-800" : "text-slate-400"
+                i <= currentIndex ? "text-slate-800" : "text-slate-500"
               }`}
             >
               {labels[s]}

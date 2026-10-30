@@ -87,7 +87,7 @@ export default function PriceInsightBanner({
           style={{ left: `${markerPosition(lowestPrice, insights.typicalLow, insights.typicalHigh)}%` }}
         />
       </div>
-      <div className="mt-1 flex justify-between text-[10px] text-slate-400">
+      <div className="mt-1 flex justify-between text-[10px] text-slate-500">
         <span>Cheaper</span>
         <span>Usual range</span>
         <span>Pricier</span>

@@ -56,13 +56,13 @@ export default function FlightCard({
             <p className="text-xs text-slate-500">{segment.from.code}</p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-slate-400">{formatDuration(totalDurationMinutes(flight))}</p>
+            <p className="text-xs text-slate-500">{formatDuration(totalDurationMinutes(flight))}</p>
             <div className="flex items-center gap-1 my-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-300" />
               <div className="flex-1 h-px bg-gradient-to-r from-indigo-300 via-fuchsia-300 to-indigo-300" />
               <PlaneIcon className="w-3.5 h-3.5 text-fuchsia-400 rotate-90" />
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500">
               {flight.stops === 0
                 ? "Nonstop"
                 : `${flight.stops} stop${flight.stops > 1 ? "s" : ""}${layovers.length ? ` · ${layovers.join(", ")}` : ""}`}
@@ -80,7 +80,7 @@ export default function FlightCard({
           {flight.seatsLeft !== undefined && (
             <p
               className={`text-xs mt-1 font-medium ${
-                lowSeats ? "text-amber-600" : "text-slate-400"
+                lowSeats ? "text-amber-600" : "text-slate-500"
               }`}
             >
               {lowSeats ? `Only ${flight.seatsLeft} seats left` : `${flight.seatsLeft} seats left`}
@@ -88,7 +88,7 @@ export default function FlightCard({
           )}
           <p
             className={`text-xs mt-1 flex items-center gap-1 font-medium ${
-              isGreenest ? "text-emerald-600" : "text-slate-400"
+              isGreenest ? "text-emerald-600" : "text-slate-500"
             }`}
           >
             <LeafIcon className="w-3 h-3" />
@@ -98,12 +98,12 @@ export default function FlightCard({
 
         <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2 sm:w-36">
           <div className="text-right sm:text-right">
-            <p className="text-[10px] text-slate-400 font-medium">from</p>
+            <p className="text-[10px] text-slate-500 font-medium">from</p>
             <p className="text-xl font-extrabold gradient-text [--gradient-from:theme(colors.indigo.600)] [--gradient-to:theme(colors.fuchsia.500)]">
               {formatPrice(flight.price)}
             </p>
           </div>
-          <span className="text-xs text-slate-400 flex items-center gap-1">
+          <span className="text-xs text-slate-500 flex items-center gap-1">
             details
             <ChevronIcon
               className={`w-3.5 h-3.5 transition-transform duration-200 ${
@@ -167,13 +167,13 @@ export default function FlightCard({
         <div className="overflow-hidden">
           <div className="px-4 sm:px-5 pb-4 sm:pb-5 border-t border-slate-100 pt-3 flex flex-col gap-4">
             <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm text-slate-600">
-              <dt className="text-slate-400">Aircraft</dt>
+              <dt className="text-slate-500">Aircraft</dt>
               <dd>{airlines.join(" + ")} fleet</dd>
-              <dt className="text-slate-400">Cabin</dt>
+              <dt className="text-slate-500">Cabin</dt>
               <dd>{flight.cabinClass}</dd>
-              <dt className="text-slate-400">Flight</dt>
+              <dt className="text-slate-500">Flight</dt>
               <dd>{flight.segments.map((s) => s.flightNumber).join(" · ")}</dd>
-              <dt className="text-slate-400">Route</dt>
+              <dt className="text-slate-500">Route</dt>
               <dd>
                 {segment.from.city} → {lastSegment.to.city}
               </dd>

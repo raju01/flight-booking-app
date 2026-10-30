@@ -63,10 +63,10 @@ export default function TravelerSelector({
         className="w-full border-2 border-slate-200 rounded-2xl px-4 py-2.5 bg-white/70 transition-colors focus:outline-none focus:border-indigo-400 hover:bg-white cursor-pointer flex items-center justify-between gap-2"
       >
         <span className="flex items-center gap-2 text-left">
-          <UsersIcon className="w-4 h-4 text-slate-400 shrink-0" />
+          <UsersIcon className="w-4 h-4 text-slate-500 shrink-0" />
           {summary}
         </span>
-        <ChevronIcon className={`w-4 h-4 text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        <ChevronIcon className={`w-4 h-4 text-slate-500 transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </button>
 
       {isOpen && (
@@ -75,7 +75,7 @@ export default function TravelerSelector({
             <div key={row.key} className="flex items-center justify-between py-2 first:pt-0 last:pb-0">
               <div>
                 <p className="text-sm font-semibold text-slate-800">{row.label}</p>
-                <p className="text-xs text-slate-400">{row.hint}</p>
+                <p className="text-xs text-slate-500">{row.hint}</p>
               </div>
               <div className="flex items-center gap-3">
                 <button

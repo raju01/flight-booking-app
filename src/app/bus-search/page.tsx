@@ -118,7 +118,7 @@ function BusResults() {
             )}
           </p>
           {results?.key === searchKey && results.source === "live" && (
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Times are from Google. A fare is shown when Google publishes one; otherwise check redBus.
             </p>
           )}

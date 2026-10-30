@@ -43,13 +43,13 @@ export default function BusCard({
             <p className="text-xs text-slate-500">{bus.from}</p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-slate-400">{formatDuration(bus.durationMinutes)}</p>
+            <p className="text-xs text-slate-500">{formatDuration(bus.durationMinutes)}</p>
             <div className="flex items-center gap-1 my-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-300" />
               <div className="flex-1 h-px bg-gradient-to-r from-emerald-300 via-teal-300 to-emerald-300" />
               <BusIcon className="w-3.5 h-3.5 text-teal-500" />
             </div>
-            <p className="text-xs text-slate-400">{bus.seatType ?? "Direct"}</p>
+            <p className="text-xs text-slate-500">{bus.seatType ?? "Direct"}</p>
           </div>
           <div>
             <p className="text-lg font-bold text-slate-900">{formatTime(bus.arrivalTime)}</p>
@@ -67,7 +67,7 @@ export default function BusCard({
           {bus.seatsLeft !== null && (
             <p
               className={`text-xs mt-1 font-medium ${
-                lowSeats ? "text-amber-600" : "text-slate-400"
+                lowSeats ? "text-amber-600" : "text-slate-500"
               }`}
             >
               {lowSeats ? `Only ${bus.seatsLeft} seats left` : `${bus.seatsLeft} seats left`}
@@ -79,7 +79,7 @@ export default function BusCard({
           <p className="text-xl font-extrabold gradient-text [--gradient-from:theme(colors.emerald.600)] [--gradient-to:theme(colors.teal.500)]">
             {bus.price === null ? "See fare" : formatPrice(bus.price)}
           </p>
-          <span className="text-xs text-slate-400 flex items-center gap-1">
+          <span className="text-xs text-slate-500 flex items-center gap-1">
             details
             <ChevronIcon
               className={`w-3.5 h-3.5 transition-transform duration-200 ${
@@ -117,13 +117,13 @@ export default function BusCard({
               <dl className="grid grid-cols-2 gap-x-6 gap-y-1">
                 {bus.busNumber && (
                   <>
-                    <dt className="text-slate-400">Bus number</dt>
+                    <dt className="text-slate-500">Bus number</dt>
                     <dd>{bus.busNumber}</dd>
                   </>
                 )}
-                <dt className="text-slate-400">Seat type</dt>
+                <dt className="text-slate-500">Seat type</dt>
                 <dd>{bus.seatType ?? "Not listed"}</dd>
-                <dt className="text-slate-400">Route</dt>
+                <dt className="text-slate-500">Route</dt>
                 <dd>
                   {bus.from} → {bus.to}
                 </dd>

@@ -117,23 +117,23 @@ export default function FlightStatusPage() {
 
           <div className="grid grid-cols-2 gap-4 text-sm mb-5">
             <div>
-              <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-1">Departure</p>
+              <p className="text-slate-500 uppercase tracking-wide text-[10px] mb-1">Departure</p>
               <p className="font-bold text-slate-900 text-lg">
                 {formatTime(result.estimatedDeparture)}
               </p>
               {result.delayMinutes > 0 && (
-                <p className="text-xs text-slate-400 line-through">
+                <p className="text-xs text-slate-500 line-through">
                   {formatTime(result.scheduledDeparture)}
                 </p>
               )}
             </div>
             <div>
-              <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-1">Arrival</p>
+              <p className="text-slate-500 uppercase tracking-wide text-[10px] mb-1">Arrival</p>
               <p className="font-bold text-slate-900 text-lg">
                 {formatTime(result.estimatedArrival)}
               </p>
               {result.delayMinutes > 0 && (
-                <p className="text-xs text-slate-400 line-through">
+                <p className="text-xs text-slate-500 line-through">
                   {formatTime(result.scheduledArrival)}
                 </p>
               )}
@@ -142,16 +142,16 @@ export default function FlightStatusPage() {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm border-t border-dashed border-slate-200 pt-4">
             <div>
-              <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-0.5">Terminal</p>
+              <p className="text-slate-500 uppercase tracking-wide text-[10px] mb-0.5">Terminal</p>
               <p className="font-semibold text-slate-800">{result.terminal}</p>
             </div>
             <div>
-              <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-0.5">Gate</p>
+              <p className="text-slate-500 uppercase tracking-wide text-[10px] mb-0.5">Gate</p>
               <p className="font-semibold text-slate-800">{result.gate}</p>
             </div>
             {result.baggageBelt && (
               <div>
-                <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-0.5">
+                <p className="text-slate-500 uppercase tracking-wide text-[10px] mb-0.5">
                   Baggage belt
                 </p>
                 <p className="font-semibold text-slate-800">{result.baggageBelt}</p>

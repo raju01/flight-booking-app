@@ -82,14 +82,14 @@ export default function SiteHeader() {
                 <UserIcon className="w-4 h-4 text-slate-500" />
                 <span className="text-slate-700 font-semibold">{user.name.split(" ")[0]}</span>
                 <ChevronIcon
-                  className={`w-3.5 h-3.5 text-slate-400 transition-transform ${menuOpen ? "rotate-180" : ""}`}
+                  className={`w-3.5 h-3.5 text-slate-500 transition-transform ${menuOpen ? "rotate-180" : ""}`}
                 />
               </button>
               {menuOpen && (
                 <div className="absolute right-0 mt-2 w-48 glass-card rounded-2xl shadow-xl p-1.5 animate-[fadeInUp_0.15s_ease-out]">
                   <div className="px-3 py-2 border-b border-slate-100 mb-1">
                     <p className="text-xs font-semibold text-slate-800 truncate">{user.name}</p>
-                    <p className="text-[11px] text-slate-400 truncate">{user.email}</p>
+                    <p className="text-[11px] text-slate-500 truncate">{user.email}</p>
                   </div>
                   <button
                     type="button"

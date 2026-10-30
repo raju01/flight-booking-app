@@ -73,7 +73,7 @@ export default function RewardsPage() {
               <div key={t.id} className="flex items-center justify-between py-2.5 text-sm">
                 <div>
                   <p className="font-semibold text-slate-800">{t.description}</p>
-                  <p className="text-xs text-slate-400">{formatDate(t.date)}</p>
+                  <p className="text-xs text-slate-500">{formatDate(t.date)}</p>
                 </div>
                 <span className="font-bold text-emerald-600">+{t.points}</span>
               </div>

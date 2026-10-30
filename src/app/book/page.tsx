@@ -404,7 +404,7 @@ export default function BookPage() {
                 <SeatIcon className="w-5 h-5 text-fuchsia-500" />
                 Choose your seats
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Optional — skip to get a random seat assigned at check-in.
               </p>
             </div>
@@ -445,7 +445,7 @@ export default function BookPage() {
               {passengers.map((p, passengerIndex) => {
                 if (!hasOwnSeat(p.travelerType)) {
                   return (
-                    <p key={passengerIndex} className="text-sm text-slate-400">
+                    <p key={passengerIndex} className="text-sm text-slate-500">
                       {p.firstName || `Passenger ${passengerIndex + 1}`} (infant) travels on an
                       adult&apos;s lap — no seat needed.
                     </p>
@@ -788,14 +788,14 @@ function StepIndicator({ current }: { current: Step }) {
               className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold transition-colors ${
                 i <= currentIndex
                   ? "bg-gradient-to-br from-indigo-600 to-fuchsia-500 text-white"
-                  : "bg-slate-100 text-slate-400"
+                  : "bg-slate-100 text-slate-500"
               }`}
             >
               {i + 1}
             </span>
             <span
               className={`text-xs font-semibold hidden sm:inline ${
-                i <= currentIndex ? "text-slate-800" : "text-slate-400"
+                i <= currentIndex ? "text-slate-800" : "text-slate-500"
               }`}
             >
               {labels[s]}

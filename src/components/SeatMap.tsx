@@ -44,7 +44,7 @@ export default function SeatMap({
       <div className="flex flex-col gap-1.5 items-center max-h-96 overflow-y-auto px-2 py-1">
         {Array.from(seatsByRow.entries()).map(([row, seats]) => (
           <div key={row} className="flex items-center gap-1.5">
-            <span className="w-5 text-[10px] text-slate-400 text-right shrink-0">{row}</span>
+            <span className="w-5 text-[10px] text-slate-500 text-right shrink-0">{row}</span>
             {seats.map((seat, i) => (
               <div key={seat.id} className="flex items-center">
                 {i === layout.aisleAfterColumnIndex + 1 && <div className="w-4" />}
@@ -84,7 +84,7 @@ function SeatButton({
         selected
           ? "bg-gradient-to-br from-indigo-600 to-fuchsia-500 text-white scale-110 shadow-md shadow-violet-300"
           : disabled
-            ? "bg-slate-200 text-slate-400"
+            ? "bg-slate-200 text-slate-500"
             : seat.isExtraLegroom
               ? "bg-amber-100 border-2 border-amber-300 text-amber-700 hover:scale-110"
               : "bg-white border-2 border-slate-300 text-slate-500 hover:border-indigo-400 hover:scale-110"

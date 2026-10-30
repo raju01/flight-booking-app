@@ -259,7 +259,7 @@ export default function ManageBookingPage() {
                               </span>
                             )}
                           </p>
-                          <p className="text-xs text-slate-400">
+                          <p className="text-xs text-slate-500">
                             Name correction fee: {formatPrice(NAME_CORRECTION_FEE)}
                           </p>
                         </div>
@@ -288,7 +288,7 @@ export default function ManageBookingPage() {
           />
 
           {flightLegs.length === 0 && (
-            <p className="text-sm text-slate-400">No flight details saved for this booking.</p>
+            <p className="text-sm text-slate-500">No flight details saved for this booking.</p>
           )}
         </div>
       )}

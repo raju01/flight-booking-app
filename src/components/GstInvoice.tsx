@@ -54,7 +54,7 @@ export default function GstInvoice({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6 text-sm">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-1">
             Billed to
           </p>
           <p className="font-bold text-slate-900">{gstDetails.companyName}</p>
@@ -62,7 +62,7 @@ export default function GstInvoice({
           <p className="text-slate-600 whitespace-pre-line">{gstDetails.billingAddress}</p>
         </div>
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-1">
             Supplier
           </p>
           <p className="font-bold text-slate-900">SkyBook Travels Pvt. Ltd.</p>
@@ -74,7 +74,7 @@ export default function GstInvoice({
       <div className="overflow-x-auto -mx-2 px-2">
         <table className="w-full text-sm min-w-[560px]">
           <thead>
-            <tr className="border-b-2 border-slate-200 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+            <tr className="border-b-2 border-slate-200 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-500">
               <th className="py-2 pr-3">Flight</th>
               <th className="py-2 pr-3">Cabin</th>
               <th className="py-2 pr-3 text-right">Taxable value</th>
@@ -129,7 +129,7 @@ export default function GstInvoice({
         </div>
       </div>
 
-      <p className="text-[10px] text-slate-400 mt-6">
+      <p className="text-[10px] text-slate-500 mt-6">
         This is a system-generated demo invoice for a mock booking. It does not represent a real
         tax document and has no legal or financial validity.
       </p>

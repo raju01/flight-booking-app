@@ -173,9 +173,9 @@ export default function ExplorePage() {
                   <p className="text-xs text-slate-500 mb-2">{d.country}</p>
                   <p className="text-2xl font-extrabold gradient-text [--gradient-from:theme(colors.indigo.600)] [--gradient-to:theme(colors.fuchsia.500)]">
                     {formatPrice(d.price)}
-                    <span className="ml-1 text-xs font-medium text-slate-400">return</span>
+                    <span className="ml-1 text-xs font-medium text-slate-500">return</span>
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">
+                  <p className="mt-1 text-xs text-slate-500">
                     {formatShortDate(d.startDate)} – {formatShortDate(d.endDate)}
                     {d.airline && ` · ${d.airline}`}
                     {d.airline && ` · ${d.stops === 0 ? "nonstop" : `${d.stops} stop${d.stops > 1 ? "s" : ""}`}`}

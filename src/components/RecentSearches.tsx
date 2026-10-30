@@ -36,7 +36,7 @@ export default function RecentSearches({
           >
             {entry.from} → {entry.to}
             {entry.tripType === "round-trip" && (
-              <span className="text-slate-400 font-normal">round trip</span>
+              <span className="text-slate-500 font-normal">round trip</span>
             )}
           </button>
         ))}

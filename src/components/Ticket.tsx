@@ -81,7 +81,7 @@ function TicketStub({
           <div>
             <p className="text-2xl font-extrabold text-slate-900">{formatTime(segment.departureTime)}</p>
             <p className="text-sm font-semibold text-slate-600">{segment.from.code}</p>
-            <p className="text-xs text-slate-400">{segment.from.city}</p>
+            <p className="text-xs text-slate-500">{segment.from.city}</p>
           </div>
           <div className="flex flex-col items-center px-2">
             <PlaneIcon className="w-4 h-4 text-fuchsia-400 rotate-90 mb-1" />
@@ -90,7 +90,7 @@ function TicketStub({
           <div className="text-right">
             <p className="text-2xl font-extrabold text-slate-900">{formatTime(segment.arrivalTime)}</p>
             <p className="text-sm font-semibold text-slate-600">{segment.to.code}</p>
-            <p className="text-xs text-slate-400">{segment.to.city}</p>
+            <p className="text-xs text-slate-500">{segment.to.city}</p>
           </div>
         </div>
 
@@ -100,22 +100,22 @@ function TicketStub({
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs border-t border-dashed border-slate-200 pt-4">
           <div>
-            <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-0.5">Date</p>
+            <p className="text-slate-500 uppercase tracking-wide text-[10px] mb-0.5">Date</p>
             <p className="font-semibold text-slate-800">{formatDate(segment.departureTime)}</p>
           </div>
           <div>
-            <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-0.5">Cabin</p>
+            <p className="text-slate-500 uppercase tracking-wide text-[10px] mb-0.5">Cabin</p>
             <p className="font-semibold text-slate-800">{flight.cabinClass}</p>
           </div>
           <div>
-            <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-0.5">Gate</p>
+            <p className="text-slate-500 uppercase tracking-wide text-[10px] mb-0.5">Gate</p>
             <p className="font-semibold text-slate-800">
               {String.fromCharCode(65 + (segment.flightNumber.length % 6))}
               {(segment.flightNumber.charCodeAt(segment.flightNumber.length - 1) % 30) + 1}
             </p>
           </div>
           <div>
-            <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-0.5">Seat</p>
+            <p className="text-slate-500 uppercase tracking-wide text-[10px] mb-0.5">Seat</p>
             <p className="font-semibold text-slate-800">
               {primarySeat ??
                 `${12 + (segment.flightNumber.length % 20)}${String.fromCharCode(
@@ -128,13 +128,13 @@ function TicketStub({
         {flight.fareTier && (
           <div className="mt-3 pt-3 border-t border-dashed border-slate-200 flex flex-wrap gap-x-6 gap-y-1 text-xs">
             <div>
-              <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-0.5">Baggage</p>
+              <p className="text-slate-500 uppercase tracking-wide text-[10px] mb-0.5">Baggage</p>
               <p className="font-semibold text-slate-800">
                 Cabin {flight.fareTier.cabinBaggageKg}kg · Check-in {flight.fareTier.checkInBaggageKg}kg
               </p>
             </div>
             <div>
-              <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-0.5">Cancellation</p>
+              <p className="text-slate-500 uppercase tracking-wide text-[10px] mb-0.5">Cancellation</p>
               <p className="font-semibold text-slate-800">
                 {flight.fareTier.cancellationFee === "free"
                   ? "Free"
@@ -146,7 +146,7 @@ function TicketStub({
 
         {passengers.length > 0 && (
           <div className="mt-4 pt-4 border-t border-dashed border-slate-200">
-            <p className="text-slate-400 uppercase tracking-wide text-[10px] mb-1.5">
+            <p className="text-slate-500 uppercase tracking-wide text-[10px] mb-1.5">
               Passenger{passengers.length > 1 ? "s" : ""}
             </p>
             <div className="flex flex-wrap gap-x-4 gap-y-1">

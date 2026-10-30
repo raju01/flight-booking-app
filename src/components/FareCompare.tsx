@@ -160,7 +160,7 @@ export default function FareCompare({
                       </p>
                     )}
                     {index > 0 && (
-                      <p className="text-xs text-slate-400">+{formatPrice(offer.price - lowest.price)}</p>
+                      <p className="text-xs text-slate-500">+{formatPrice(offer.price - lowest.price)}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -208,7 +208,7 @@ export default function FareCompare({
             <button
               type="button"
               onClick={() => shareOnWhatsApp(flight, lowest?.price ?? flight.price)}
-              className="font-semibold text-emerald-600 hover:underline cursor-pointer mr-2"
+              className="font-semibold text-emerald-700 hover:underline cursor-pointer mr-2"
             >
               Share on WhatsApp
             </button>
@@ -226,7 +226,7 @@ export default function FareCompare({
             ))}
           </div>
         )}
-        <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+        <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
           Prices come from Google Flights and can change at checkout. We list sellers by price, not by
           commission.
         </p>

@@ -106,7 +106,7 @@ export default function FareAlertsPage() {
                         )}
                       </>
                     ) : (
-                      <p className="text-sm text-slate-400">No fares</p>
+                      <p className="text-sm text-slate-500">No fares</p>
                     )}
                   </div>
                   <button
@@ -120,7 +120,7 @@ export default function FareAlertsPage() {
                     type="button"
                     onClick={() => handleRemove(alert.id)}
                     aria-label="Remove alert"
-                    className="text-sm font-semibold text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
+                    className="text-sm font-semibold text-slate-500 hover:text-red-500 transition-colors cursor-pointer"
                   >
                     Remove
                   </button>
