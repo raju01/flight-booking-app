@@ -10,6 +10,7 @@ export default function SiteHeader() {
   const router = useRouter();
   const { user, isReady, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -25,6 +26,7 @@ export default function SiteHeader() {
   function handleSignOut() {
     signOut();
     setMenuOpen(false);
+    setMobileOpen(false);
     router.push("/");
   }
 
@@ -44,6 +46,18 @@ export default function SiteHeader() {
             Sky<span className="gradient-text [--gradient-from:theme(colors.indigo.600)] [--gradient-to:theme(colors.fuchsia.500)]">Book</span>
           </span>
         </Link>
+        <button
+          type="button"
+          onClick={() => setMobileOpen((v) => !v)}
+          aria-expanded={mobileOpen}
+          aria-controls="mobile-menu"
+          aria-label={mobileOpen ? "Close menu" : "Open menu"}
+          className="sm:hidden flex items-center justify-center w-10 h-10 rounded-xl bg-slate-900/5 text-slate-700 cursor-pointer"
+        >
+          <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            {mobileOpen ? <path d="M6 6l12 12M18 6 6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+          </svg>
+        </button>
         <nav className="hidden sm:flex items-center gap-4 text-sm font-medium text-slate-500">
           <Link href="/explore" className="hover:text-indigo-600 transition-colors">
             Explore
@@ -107,6 +121,49 @@ export default function SiteHeader() {
           </Link>
         </nav>
       </div>
+
+      {mobileOpen && (
+        <nav
+          id="mobile-menu"
+          className="sm:hidden border-t border-slate-200 bg-white/95 px-4 py-3 flex flex-col text-base font-medium text-slate-700 animate-[fadeInUp_0.15s_ease-out]"
+        >
+          {[
+            ["/", "Search flights"],
+            ["/flights", "Flight routes"],
+            ["/explore", "Explore"],
+            ["/status", "Flight status"],
+            ["/alerts", "Fare alerts"],
+            ["/rewards", "Rewards"],
+            ["/manage", "Manage booking"],
+          ].map(([href, label]) => (
+            <Link
+              key={href}
+              href={href}
+              onClick={() => setMobileOpen(false)}
+              className="py-3 border-b border-slate-100 last:border-0 hover:text-indigo-600"
+            >
+              {label}
+            </Link>
+          ))}
+          {isReady && user ? (
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="py-3 text-left text-red-600 cursor-pointer"
+            >
+              Sign out ({user.name.split(" ")[0]})
+            </button>
+          ) : (
+            <Link
+              href="/login"
+              onClick={() => setMobileOpen(false)}
+              className="mt-2 text-center rounded-full bg-gradient-to-r from-indigo-600 to-fuchsia-500 text-white font-semibold py-3"
+            >
+              Sign in
+            </Link>
+          )}
+        </nav>
+      )}
     </header>
   );
 }
