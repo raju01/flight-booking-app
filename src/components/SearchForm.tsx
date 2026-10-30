@@ -12,7 +12,11 @@ import { TravelerCounts, totalTravelers } from "@/types/traveler";
 import { addSearchHistoryEntry } from "@/lib/searchHistory";
 import { SearchHistoryEntry } from "@/types/searchHistory";
 
+import DatePicker from "@/components/DatePicker";
 import { futureDate } from "@/lib/dates";
+
+// Google Flights sells about eleven months ahead.
+const MAX_ADVANCE_DAYS = 330;
 
 // Local calendar day: the UTC date is the wrong day for the first hours of every morning in India.
 function todayISO() {
@@ -43,6 +47,10 @@ export default function SearchForm() {
   const today = useSyncExternalStore(subscribe, () => futureDate(0), () => "");
   const defaultDepart = useSyncExternalStore(subscribe, () => futureDate(7), () => "");
   const defaultReturn = useSyncExternalStore(subscribe, () => futureDate(14), () => "");
+  const maxDate = useSyncExternalStore(subscribe, () => futureDate(MAX_ADVANCE_DAYS), () => "");
+  // Which calendar is open ("depart", "return" or "leg-<n>"); only one at a time.
+  const [openPicker, setOpenPicker] = useState<string | null>(null);
+  const setPickerOpen = (id: string) => (open: boolean) => setOpenPicker(open ? id : null);
   const [departEdit, setDepartDate] = useState<string | null>(null);
   const [returnEdit, setReturnDate] = useState<string | null>(null);
   const departDate = departEdit ?? defaultDepart;
@@ -210,13 +218,20 @@ export default function SearchForm() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1">Depart</label>
-              <input
-                type="date"
+              <DatePicker
+                ariaLabel="Departure date"
                 value={departDate}
                 min={today}
-                onChange={(e) => setDepartDate(e.target.value)}
-                className={inputClass}
-                required
+                max={maxDate}
+                rangeStart={tripType === "round-trip" ? departDate : undefined}
+                rangeEnd={tripType === "round-trip" ? returnDate : undefined}
+                open={openPicker === "depart"}
+                onOpenChange={setPickerOpen("depart")}
+                onChange={(iso) => {
+                  setDepartDate(iso);
+                  // Carry on to the return date, as most booking sites do.
+                  setOpenPicker(tripType === "round-trip" ? "return" : null);
+                }}
               />
             </div>
             {tripType === "round-trip" && (
@@ -224,13 +239,20 @@ export default function SearchForm() {
                 <label className="block text-xs font-semibold text-slate-500 mb-1">
                   Return
                 </label>
-                <input
-                  type="date"
+                <DatePicker
+                  ariaLabel="Return date"
+                  align="right"
                   value={returnDate}
                   min={departDate}
-                  onChange={(e) => setReturnDate(e.target.value)}
-                  className={inputClass}
-                  required
+                  max={maxDate}
+                  rangeStart={departDate}
+                  rangeEnd={returnDate}
+                  open={openPicker === "return"}
+                  onOpenChange={setPickerOpen("return")}
+                  onChange={(iso) => {
+                    setReturnDate(iso);
+                    setOpenPicker(null);
+                  }}
                 />
               </div>
             )}
@@ -283,13 +305,17 @@ export default function SearchForm() {
               />
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1">Date</label>
-                <input
-                  type="date"
+                <DatePicker
+                  ariaLabel={`Flight ${i + 1} date`}
                   value={leg.date}
                   min={i > 0 ? legs[i - 1].date : today}
-                  onChange={(e) => updateLeg(i, "date", e.target.value)}
-                  className={inputClass}
-                  required
+                  max={maxDate}
+                  open={openPicker === `leg-${i}`}
+                  onOpenChange={setPickerOpen(`leg-${i}`)}
+                  onChange={(iso) => {
+                    updateLeg(i, "date", iso);
+                    setOpenPicker(null);
+                  }}
                 />
               </div>
               <button

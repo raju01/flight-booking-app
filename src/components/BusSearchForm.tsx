@@ -1,13 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
+import DatePicker from "@/components/DatePicker";
+import { futureDate } from "@/lib/dates";
 import AirportAutocomplete from "@/components/AirportAutocomplete";
 import { SwapIcon, BusIcon } from "@/components/icons";
 
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
+const subscribe = () => () => {};
 
 const inputClass =
   "w-full border-2 border-slate-200 rounded-2xl px-4 py-2.5 bg-white text-slate-900 placeholder:text-slate-400 caret-slate-900 transition-colors focus:outline-none focus:border-emerald-400";
@@ -16,7 +16,13 @@ export default function BusSearchForm() {
   const router = useRouter();
   const [from, setFrom] = useState("DEL");
   const [to, setTo] = useState("JAI");
-  const [travelDate, setTravelDate] = useState(todayISO());
+  // Local calendar day (the UTC date is the wrong day for early mornings in India); empty until the
+  // browser takes over so the page hydrates cleanly.
+  const today = useSyncExternalStore(subscribe, () => futureDate(0), () => "");
+  const maxDate = useSyncExternalStore(subscribe, () => futureDate(90), () => "");
+  const [travelEdit, setTravelDate] = useState<string | null>(null);
+  const travelDate = travelEdit ?? today;
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [passengers, setPassengers] = useState(1);
   const [error, setError] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -64,13 +70,18 @@ export default function BusSearchForm() {
           <label className="block text-xs font-semibold text-slate-500 mb-1">
             Date of journey
           </label>
-          <input
-            type="date"
+          <DatePicker
+            ariaLabel="Date of journey"
+            accent="emerald"
             value={travelDate}
-            min={todayISO()}
-            onChange={(e) => setTravelDate(e.target.value)}
-            className={inputClass}
-            required
+            min={today}
+            max={maxDate}
+            open={pickerOpen}
+            onOpenChange={setPickerOpen}
+            onChange={(iso) => {
+              setTravelDate(iso);
+              setPickerOpen(false);
+            }}
           />
         </div>
         <div>
