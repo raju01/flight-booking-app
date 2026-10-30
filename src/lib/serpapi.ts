@@ -107,9 +107,48 @@ function toInsights(raw: {
 
 const searchCache = new Map<string, { at: number; result: SerpSearchResult }>();
 
+// Google reports price history and the usual range for one traveller only. For a group, scale the
+// single-traveller figures so the last point is today's real group fare (adults-only groups scale
+// exactly; children and infants are picked up by the same ratio).
+function scaleInsights(
+  party: PriceInsights | undefined,
+  solo: PriceInsights | undefined,
+  partyLowest: number
+): PriceInsights | undefined {
+  if (party?.history) return party;
+  const soloToday = solo?.history?.[solo.history.length - 1]?.[1];
+  if (!solo?.history || !soloToday) return party;
+  const factor = partyLowest / soloToday;
+  if (!Number.isFinite(factor) || factor <= 0 || factor > 20) return party;
+  return {
+    level: party?.level ?? solo.level,
+    typicalLow: party?.typicalLow ?? Math.round(solo.typicalLow * factor),
+    typicalHigh: party?.typicalHigh ?? Math.round(solo.typicalHigh * factor),
+    history: solo.history.map(([seconds, price]) => [seconds, Math.round(price * factor)] as [number, number]),
+    estimatedForParty: true,
+  };
+}
+
+export async function searchSerpApiFlights(params: {
+  from: string;
+  to: string;
+  date: string;
+  cabinClass: CabinClass;
+  travelers?: TravelerCounts;
+}): Promise<SerpSearchResult> {
+  const result = await searchOnce(params);
+  const travelers = params.travelers ?? SOLO;
+  const isSolo = travelers.adults === 1 && travelers.children === 0 && travelers.infants === 0;
+  if (isSolo || result.flights.length === 0 || result.insights?.history) return result;
+  // The single-traveller search is cached, so this is at most one extra lookup per route and date.
+  const solo = await searchOnce({ ...params, travelers: SOLO }).catch(() => null);
+  const partyLowest = Math.min(...result.flights.map((f) => f.price));
+  return { ...result, insights: scaleInsights(result.insights, solo?.insights, partyLowest) };
+}
+
 // Prices are for the whole party (Google returns the total for everyone), so they match what the
 // seller charges at checkout.
-export async function searchSerpApiFlights(params: {
+async function searchOnce(params: {
   from: string;
   to: string;
   date: string;

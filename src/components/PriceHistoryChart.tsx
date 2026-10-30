@@ -19,7 +19,15 @@ const PAD = 8; // vertical padding, in percent of the chart height
 
 // Daily lowest fare for the route with the usual range shaded behind it. Drag across it (mouse, touch
 // or arrow keys) to read the fare for any day.
-export default function PriceHistoryChart({ insights, travelDate }: { insights: PriceInsights; travelDate?: string }) {
+export default function PriceHistoryChart({
+  insights,
+  travelDate,
+  partyLabel,
+}: {
+  insights: PriceInsights;
+  travelDate?: string;
+  partyLabel?: string;
+}) {
   const trip = travelDate
     ? parseISODate(travelDate)?.toLocaleDateString("en-IN", { day: "numeric", month: "short" })
     : undefined;
@@ -77,7 +85,7 @@ export default function PriceHistoryChart({ insights, travelDate }: { insights: 
             </>
           ) : (
             <>
-              the {trip ? `${trip} ` : ""}fare was <strong className="text-slate-900">{formatPrice(price)}</strong>
+              the {trip ? `${trip} ` : ""}fare{partyLabel ? ` for ${partyLabel}` : ""} was <strong className="text-slate-900">{formatPrice(price)}</strong>
               {shown !== last && (
                 <span className={diff < 0 ? "text-emerald-700" : "text-rose-700"}>
                   {" "}
@@ -140,6 +148,11 @@ export default function PriceHistoryChart({ insights, travelDate }: { insights: 
         />
       </div>
 
+      {insights.estimatedForParty && (
+        <p className="mt-1 text-[10px] text-slate-500">
+          Estimated for your group from the single-traveller fare history. Today&rsquo;s fare is exact.
+        </p>
+      )}
       <div className="mt-1 flex justify-between text-[10px] text-slate-500">
         <span>{formatDay(history[0][0])}</span>
         <span>{active === null ? "Drag to see how the fare for your trip changed" : ""}</span>

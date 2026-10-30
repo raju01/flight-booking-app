@@ -69,4 +69,6 @@ export interface PriceInsights {
   typicalLow: number;
   typicalHigh: number;
   history?: [seconds: number, price: number][]; // daily lowest fare, oldest first
+  // Google only reports history for one traveller; for groups it is scaled from that (see serpapi.ts).
+  estimatedForParty?: boolean;
 }

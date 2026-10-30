@@ -68,7 +68,11 @@ export default function PriceInsightBanner({
         <span>Usual range</span>
         <span>Pricier</span>
       </div>
-      <PriceHistoryChart insights={insights} travelDate={travelDate} />
+      <PriceHistoryChart
+        insights={insights}
+        travelDate={travelDate}
+        partyLabel={payingTravelers(party) > 1 ? describeParty(party) : undefined}
+      />
     </div>
   );
 }
