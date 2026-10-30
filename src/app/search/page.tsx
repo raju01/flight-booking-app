@@ -16,13 +16,14 @@ import { totalDurationMinutes } from "@/lib/flightDuration";
 import { addDays, futureDate } from "@/lib/dates";
 import { addFareAlert, findFareAlert, removeFareAlert } from "@/lib/fareAlerts";
 import { BellIcon } from "@/components/icons";
-import { findAirport, formatAirport } from "@/lib/airports";
+import { findAirport, formatAirport, isIndianAirport } from "@/lib/airports";
 import { formatPrice } from "@/lib/currency";
 import { timeOfDayRange, TimeOfDay } from "@/lib/timeOfDay";
 import { PlaneIcon } from "@/components/icons";
 import PriceInsightBanner from "@/components/PriceInsightBanner";
 import SortTabs, { SortSummary } from "@/components/SortTabs";
 import DateChangeDialog, { DateChange } from "@/components/DateChangeDialog";
+import RoadAlternative from "@/components/RoadAlternative";
 import { CabinClass, Flight, PriceInsights } from "@/types/flight";
 import { MultiCityLeg } from "@/types/multiCity";
 import { TravelerCounts, totalTravelers } from "@/types/traveler";
@@ -467,6 +468,21 @@ function SearchResults() {
               lowestPrice={Math.min(...outboundFlights.map((f) => f.price))}
             />
           )}
+          {tripType !== "multi-city" &&
+            results?.key === searchKey &&
+            results.source === "live" &&
+            outboundFlights.length > 0 &&
+            isIndianAirport(fromAirport) &&
+            isIndianAirport(toAirport) && (
+              <RoadAlternative
+                from={from}
+                to={to}
+                date={departDate}
+                travelers={travelers}
+                flightLowest={Math.min(...outboundFlights.map((f) => f.price))}
+                flightFastest={Math.min(...outboundFlights.map(totalDurationMinutes))}
+              />
+            )}
           <section className="mb-10">
             <h2 className="text-lg font-bold text-slate-900 mb-3">
               {tripType === "round-trip" ? "Outbound flights" : "Available flights"}
