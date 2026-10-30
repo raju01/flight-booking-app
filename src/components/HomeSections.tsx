@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import { findAirport } from "@/lib/airports";
+import { futureDate } from "@/lib/dates";
 import { BellIcon, PlaneIcon, SparkleIcon, StarIcon, WalletIcon } from "@/components/icons";
 
 const POPULAR_ROUTES: [string, string][] = [
@@ -54,12 +55,6 @@ function searchHref(from: string, to: string, date: string): string {
   })}`;
 }
 
-function futureDate(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 const subscribe = () => () => {};
 
 function RouteGrid({ routes, date }: { routes: [string, string][]; date: string }) {
@@ -97,6 +92,9 @@ export default function HomeSections() {
         <RouteGrid routes={POPULAR_ROUTES} date={date} />
         <h3 className="mt-8 text-lg font-bold text-slate-900">International</h3>
         <RouteGrid routes={INTERNATIONAL_ROUTES} date={date} />
+        <Link href="/flights" className="mt-6 inline-block font-semibold text-indigo-600 hover:underline">
+          Browse all routes →
+        </Link>
       </section>
 
 

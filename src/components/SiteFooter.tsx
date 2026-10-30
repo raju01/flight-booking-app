@@ -8,7 +8,10 @@ export default function SiteFooter() {
           SkyBook compares flight fares. Tickets are sold by the airlines. We may earn a commission
           when you book through our links.
         </p>
-        <nav className="flex gap-4 font-semibold shrink-0">
+        <nav className="flex flex-wrap gap-4 font-semibold shrink-0">
+          <Link href="/flights" className="hover:text-indigo-600">
+            Flight routes
+          </Link>
           <Link href="/about" className="hover:text-indigo-600">
             About
           </Link>
