@@ -30,6 +30,37 @@ function markerPosition(price: number, low: number, high: number): number {
   return Math.min(Math.max(((price - min) / (max - min)) * 100, 2), 98);
 }
 
+const CHART_WIDTH = 300;
+const CHART_HEIGHT = 56;
+
+// Daily lowest fare for the route, with the usual price range shaded behind it.
+function HistoryChart({ insights }: { insights: PriceInsights }) {
+  const history = insights.history;
+  if (!history) return null;
+  const prices = history.map(([, price]) => price);
+  const min = Math.min(...prices, insights.typicalLow);
+  const max = Math.max(...prices, insights.typicalHigh);
+  const span = Math.max(max - min, 1);
+  const x = (i: number) => (i / (history.length - 1)) * CHART_WIDTH;
+  const y = (price: number) => CHART_HEIGHT - 4 - ((price - min) / span) * (CHART_HEIGHT - 8);
+  const line = history.map(([, price], i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)} ${y(price).toFixed(1)}`).join(" ");
+  const days = Math.round((history[history.length - 1][0] - history[0][0]) / 86400);
+  return (
+    <div className="mt-4">
+      <div className="flex justify-between text-[10px] text-slate-500">
+        <span>Lowest fare, last {days} days</span>
+        <span>
+          {formatPrice(Math.min(...prices))} – {formatPrice(Math.max(...prices))}
+        </span>
+      </div>
+      <svg viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} className="mt-1 w-full h-14" role="img" aria-label="Price history chart" preserveAspectRatio="none">
+        <rect x="0" width={CHART_WIDTH} y={y(insights.typicalHigh)} height={Math.max(y(insights.typicalLow) - y(insights.typicalHigh), 1)} className="fill-slate-300/50" />
+        <path d={line} fill="none" strokeWidth="1.6" vectorEffect="non-scaling-stroke" className="stroke-slate-700" />
+      </svg>
+    </div>
+  );
+}
+
 export default function PriceInsightBanner({
   insights,
   lowestPrice,
@@ -61,6 +92,7 @@ export default function PriceInsightBanner({
         <span>Usual range</span>
         <span>Pricier</span>
       </div>
+      <HistoryChart insights={insights} />
     </div>
   );
 }

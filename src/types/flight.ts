@@ -66,4 +66,5 @@ export interface PriceInsights {
   level: "low" | "typical" | "high";
   typicalLow: number;
   typicalHigh: number;
+  history?: [seconds: number, price: number][]; // daily lowest fare, oldest first
 }

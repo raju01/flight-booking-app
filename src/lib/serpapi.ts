@@ -86,13 +86,20 @@ export interface SerpSearchResult {
 function toInsights(raw: {
   price_level?: string;
   typical_price_range?: number[];
+  price_history?: unknown;
 } | undefined): PriceInsights | undefined {
   const [typicalLow, typicalHigh] = raw?.typical_price_range ?? [];
   const level = raw?.price_level;
   if ((level !== "low" && level !== "typical" && level !== "high") || typeof typicalLow !== "number" || typeof typicalHigh !== "number") {
     return undefined;
   }
-  return { level, typicalLow, typicalHigh };
+  const history = Array.isArray(raw?.price_history)
+    ? raw.price_history.filter(
+        (point): point is [number, number] =>
+          Array.isArray(point) && typeof point[0] === "number" && typeof point[1] === "number"
+      )
+    : [];
+  return { level, typicalLow, typicalHigh, history: history.length >= 2 ? history : undefined };
 }
 
 const searchCache = new Map<string, { at: number; result: SerpSearchResult }>();
@@ -128,7 +135,7 @@ export async function searchSerpApiFlights(params: {
     error?: string;
     best_flights?: SerpOption[];
     other_flights?: SerpOption[];
-    price_insights?: { price_level?: string; typical_price_range?: number[] };
+    price_insights?: { price_level?: string; typical_price_range?: number[]; price_history?: unknown };
   };
 
   let flights: Flight[] = [];
