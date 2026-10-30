@@ -224,7 +224,7 @@ function SearchResults() {
       return;
     }
     const lowest = outboundFlights.length ? Math.min(...outboundFlights.map((f) => f.price)) : 0;
-    addFareAlert(from, to, departDate, cabinClass, lowest);
+    addFareAlert(from, to, departDate, cabinClass, lowest, travelers);
     setAlertSaved(true);
   }
 

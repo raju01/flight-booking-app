@@ -2,13 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { loadFareAlerts, removeFareAlert, currentLowestPrice } from "@/lib/fareAlerts";
+import { loadFareAlerts, removeFareAlert } from "@/lib/fareAlerts";
+import { fetchFlights } from "@/lib/liveApi";
+import { parseISODate, futureDate } from "@/lib/dates";
+import { SOLO, describeParty, payingTravelers } from "@/lib/party";
 import { findAirport, formatAirport } from "@/lib/airports";
 import { formatPrice } from "@/lib/currency";
 import { FareAlert } from "@/types/fareAlert";
 import { BellIcon, PlaneIcon } from "@/components/icons";
 
+// "checking": live lookup in progress; "unavailable": could not get real fares (never guessed);
+// "expired": the travel date has passed.
 interface AlertWithPrice extends FareAlert {
+  state: "checking" | "ok" | "unavailable" | "expired";
   currentPrice: number | null;
 }
 
@@ -18,8 +24,45 @@ export default function FareAlertsPage() {
 
   useEffect(() => {
     // Reads localStorage (unavailable during SSR) after mount to avoid a hydration mismatch.
+    const today = futureDate(0);
+    const saved = loadFareAlerts();
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setAlerts(loadFareAlerts().map((a) => ({ ...a, currentPrice: currentLowestPrice(a) })));
+    setAlerts(
+      saved.map((a) => ({ ...a, currentPrice: null, state: a.date < today ? "expired" : "checking" }))
+    );
+
+    // Real fares for the same party the alert was saved for. Nothing is ever filled in with sample data.
+    const controller = new AbortController();
+    for (const alert of saved.filter((a) => a.date >= today)) {
+      const party = alert.travelers ?? SOLO;
+      fetchFlights(
+        {
+          from: alert.from,
+          to: alert.to,
+          date: alert.date,
+          cabinClass: alert.cabinClass,
+          passengers: party.adults + party.children,
+          travelers: party,
+        },
+        controller.signal
+      )
+        .then((result) => {
+          const live = result.source === "live" && result.flights.length > 0;
+          setAlerts((prev) =>
+            prev.map((a) =>
+              a.id === alert.id
+                ? {
+                    ...a,
+                    state: live ? "ok" : "unavailable",
+                    currentPrice: live ? Math.min(...result.flights.map((f) => f.price)) : null,
+                  }
+                : a
+            )
+          );
+        })
+        .catch(() => {}); // page left
+    }
+    return () => controller.abort();
   }, []);
 
   function handleRemove(id: string) {
@@ -28,11 +71,15 @@ export default function FareAlertsPage() {
   }
 
   function handleView(alert: AlertWithPrice) {
+    const party = alert.travelers ?? SOLO;
     const params = new URLSearchParams({
       from: alert.from,
       to: alert.to,
       departDate: alert.date,
-      passengers: "1",
+      passengers: String(party.adults + party.children),
+      adults: String(party.adults),
+      children: String(party.children),
+      infants: String(party.infants),
       cabinClass: alert.cabinClass,
       tripType: "one-way",
     });
@@ -74,18 +121,26 @@ export default function FareAlertsPage() {
                     {toAirport ? formatAirport(toAirport) : alert.to}
                   </p>
                   <p className="text-xs text-slate-500">
-                    {new Date(alert.date).toLocaleDateString("en-IN", {
+                    {parseISODate(alert.date)?.toLocaleDateString("en-IN", {
                       weekday: "short",
                       day: "2-digit",
                       month: "short",
                     })}{" "}
-                    · {alert.cabinClass} · saved at {formatPrice(alert.savedPrice)}
+                    · {alert.cabinClass}
+                    {payingTravelers(alert.travelers) > 1 && ` · ${describeParty(alert.travelers)}`} · saved at{" "}
+                    {formatPrice(alert.savedPrice)}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-4">
                   <div className="text-right">
-                    {alert.currentPrice !== null ? (
+                    {alert.state === "checking" ? (
+                      <p className="text-sm text-slate-500 animate-pulse">Checking fares…</p>
+                    ) : alert.state === "expired" ? (
+                      <p className="text-sm text-slate-500">Date has passed</p>
+                    ) : alert.state === "unavailable" ? (
+                      <p className="text-sm text-slate-500">Couldn&rsquo;t check right now</p>
+                    ) : alert.currentPrice !== null ? (
                       <>
                         <p
                           className={`text-lg font-extrabold ${

@@ -1,6 +1,6 @@
 import { CabinClass } from "@/types/flight";
 import { FareAlert } from "@/types/fareAlert";
-import { generateMockFlights } from "@/lib/mockFlights";
+import { TravelerCounts } from "@/types/traveler";
 
 const STORAGE_KEY = "skybook_fare_alerts";
 
@@ -42,7 +42,8 @@ export function addFareAlert(
   to: string,
   date: string,
   cabinClass: CabinClass,
-  savedPrice: number
+  savedPrice: number,
+  travelers?: TravelerCounts
 ): FareAlert {
   const alert: FareAlert = {
     id: `${from}-${to}-${date}-${cabinClass}`,
@@ -51,6 +52,7 @@ export function addFareAlert(
     date,
     cabinClass,
     savedPrice,
+    travelers,
     createdAt: new Date().toISOString(),
   };
   const existing = loadFareAlerts().filter((a) => a.id !== alert.id);
@@ -60,15 +62,4 @@ export function addFareAlert(
 
 export function removeFareAlert(id: string) {
   saveFareAlerts(loadFareAlerts().filter((a) => a.id !== id));
-}
-
-export function currentLowestPrice(alert: FareAlert): number | null {
-  const flights = generateMockFlights({
-    from: alert.from,
-    to: alert.to,
-    date: alert.date,
-    cabinClass: alert.cabinClass,
-  });
-  if (flights.length === 0) return null;
-  return Math.min(...flights.map((f) => f.price));
 }
