@@ -27,6 +27,7 @@ interface SerpOption {
     arrival_airport: SerpAirport;
     duration: number;
     airline: string;
+    airline_logo?: string;
     flight_number: string;
   }[];
   price?: number;
@@ -47,6 +48,19 @@ function toLocalIso(time: string): string {
   return `${time.replace(" ", "T")}:00`;
 }
 
+// Logos are shown straight from Google's image host; anything else is ignored.
+function trustedLogo(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" && parsed.hostname === "www.gstatic.com" && parsed.pathname.startsWith("/flights/")
+      ? parsed.href
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function toFlight(option: SerpOption, cabinClass: CabinClass, travelers: TravelerCounts): Flight | null {
   if (!option.flights?.length || typeof option.price !== "number") return null;
 
@@ -58,6 +72,7 @@ function toFlight(option: SerpOption, cabinClass: CabinClass, travelers: Travele
     departureTime: toLocalIso(s.departure_airport.time),
     arrivalTime: toLocalIso(s.arrival_airport.time),
     durationMinutes: s.duration,
+    airlineLogo: trustedLogo(s.airline_logo),
   }));
 
   const route = `${segments[0].from.code} to ${segments[segments.length - 1].to.code}`;
@@ -213,6 +228,7 @@ const GOOGLE_CLICK_URL = "https://www.google.com/travel/clk/";
 interface SerpBookingOption {
   together?: {
     book_with?: string;
+    airline_logos?: string[];
     price?: number;
     booking_request?: { url?: string; post_data?: string };
   };
@@ -284,7 +300,7 @@ async function requestFlightOffers(params: {
     const o = option.together;
     const request = o?.booking_request;
     if (!o?.book_with || typeof o.price !== "number" || !request?.url?.startsWith(GOOGLE_CLICK_URL)) continue;
-    offers.push({ seller: o.book_with, price: o.price, url: request.url, postData: request.post_data ?? "" });
+    offers.push({ seller: o.book_with, logo: trustedLogo(o.airline_logos?.[0]), price: o.price, url: request.url, postData: request.post_data ?? "" });
   }
   offers.sort((a, b) => a.price - b.price);
 

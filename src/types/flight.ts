@@ -19,6 +19,7 @@ export interface FlightSegment {
   departureTime: string; // ISO string
   arrivalTime: string; // ISO string
   durationMinutes: number;
+  airlineLogo?: string;
 }
 
 export interface Flight {
@@ -40,6 +41,7 @@ export interface Flight {
 // One seller's price for a flight. Booking is a form POST to `url` with `postData` as its fields.
 export interface FlightOffer {
   seller: string;
+  logo?: string; // the same partner or airline logo Google Flights shows
   price: number;
   url: string;
   postData: string;

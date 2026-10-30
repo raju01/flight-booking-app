@@ -14,13 +14,25 @@ type State =
 
 const AVATAR_COLORS = ["bg-indigo-500", "bg-fuchsia-500", "bg-emerald-500", "bg-amber-500", "bg-sky-500", "bg-rose-500", "bg-teal-500"];
 
-function SellerAvatar({ name }: { name: string }) {
+function SellerAvatar({ name, logo }: { name: string; logo?: string }) {
+  const [failed, setFailed] = useState(false);
+  if (logo && !failed) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- Google's own logo host, already sized
+      <img
+        src={logo}
+        alt=""
+        onError={() => setFailed(true)}
+        className="shrink-0 h-8 w-8 sm:h-10 sm:w-10 rounded-lg border border-slate-200 bg-white object-contain p-1"
+      />
+    );
+  }
   let hash = 0;
   for (const char of name) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
   return (
     <span
       aria-hidden
-      className={`hidden sm:flex shrink-0 w-9 h-9 rounded-full ${AVATAR_COLORS[hash % AVATAR_COLORS.length]} text-white text-sm font-bold items-center justify-center`}
+      className={`flex shrink-0 h-8 w-8 sm:h-10 sm:w-10 rounded-lg ${AVATAR_COLORS[hash % AVATAR_COLORS.length]} text-white text-sm font-bold items-center justify-center`}
     >
       {name.trim().charAt(0).toUpperCase()}
     </span>
@@ -144,22 +156,23 @@ export default function FareCompare({
               {shown.map((offer, index) => (
                 <li
                   key={`${offer.seller}-${offer.price}`}
-                  className={`flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2.5 border ${
+                  className={`flex flex-col gap-1.5 rounded-lg bg-white px-3 py-2.5 border ${
                     index === 0 ? "border-emerald-300 shadow-sm shadow-emerald-100" : "border-slate-200"
                   }`}
                 >
-                  <SellerAvatar name={offer.seller} />
+                  <div className="flex items-center justify-between gap-3">
+                  <SellerAvatar name={offer.seller} logo={offer.logo} />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-slate-800 break-words">
                       {offer.seller}
                       {offer.seller.toLowerCase() === airline.toLowerCase() && (
-                        <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-indigo-600">
+                        <span className="ml-2 inline-block whitespace-nowrap text-[10px] font-bold uppercase tracking-wide text-indigo-600">
                           Airline
                         </span>
                       )}
                     </p>
                     {index === 0 && (
-                      <p className="inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+                      <p className="hidden sm:inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
                         ★ Recommended
                         {offers.length > 1 && <span className="hidden sm:inline"> · lowest price</span>}
                       </p>
@@ -198,6 +211,12 @@ export default function FareCompare({
                       {index === 0 ? "Book now" : "Book"}
                     </button>
                   </div>
+                  </div>
+                  {index === 0 && (
+                    <p className="sm:hidden inline-flex w-fit items-center whitespace-nowrap text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+                      ★ Recommended{offers.length > 1 && " · lowest price"}
+                    </p>
+                  )}
                 </li>
               ))}
             </ul>

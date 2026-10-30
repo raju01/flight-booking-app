@@ -76,7 +76,13 @@ export default function FlightCard({
         </div>
 
         <div className="text-sm text-slate-600 sm:w-40">
-          <p className="font-semibold text-slate-800">{airlines.join(" + ")}</p>
+          <p className="font-semibold text-slate-800 flex items-center gap-2">
+            {segment.airlineLogo && (
+              // eslint-disable-next-line @next/next/no-img-element -- Google's own logo host, already sized
+              <img src={segment.airlineLogo} alt="" loading="lazy" className="h-6 w-6 rounded object-contain" />
+            )}
+            {airlines.join(" + ")}
+          </p>
           <p className="text-xs">{flight.segments.map((s) => s.flightNumber).join(" · ")}</p>
           {flight.seatsLeft !== undefined && (
             <p
