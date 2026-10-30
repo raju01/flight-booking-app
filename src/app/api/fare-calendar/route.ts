@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { searchFlights, DataSource } from "@/lib/flightSearch";
 import { parseSearchParams } from "@/lib/apiParams";
 import { isSerpApiConfigured } from "@/lib/serpapi";
+import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 
 const SPAN_DAYS = 3;
 
@@ -15,6 +16,8 @@ function addDays(iso: string, days: number) {
 export const maxDuration = 30;
 
 export async function GET(request: NextRequest) {
+  const wait = rateLimit(request, "calendar", 20);
+  if (wait > 0) return tooManyRequests(wait);
   const params = parseSearchParams(request.nextUrl.searchParams);
   if (!params) return Response.json({ error: "Invalid search parameters" }, { status: 400 });
 

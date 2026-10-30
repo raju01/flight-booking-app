@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { fetchFlightOffers, isSerpApiConfigured } from "@/lib/serpapi";
 import { CabinClass } from "@/types/flight";
+import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 
 export const maxDuration = 30;
 
@@ -8,6 +9,8 @@ const CABINS: CabinClass[] = ["Economy", "Premium Economy", "Business", "First"]
 
 // Sellers and prices for one live flight. POST because the booking token is too long for a URL.
 export async function POST(request: NextRequest) {
+  const wait = rateLimit(request, "offers", 60);
+  if (wait > 0) return tooManyRequests(wait);
   const body = (await request.json().catch(() => null)) as {
     from?: string;
     to?: string;
