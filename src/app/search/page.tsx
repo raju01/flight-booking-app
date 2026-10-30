@@ -19,7 +19,8 @@ import { findAirport, formatAirport } from "@/lib/airports";
 import { formatPrice } from "@/lib/currency";
 import { timeOfDayRange, TimeOfDay } from "@/lib/timeOfDay";
 import { PlaneIcon } from "@/components/icons";
-import { CabinClass, Flight } from "@/types/flight";
+import PriceInsightBanner from "@/components/PriceInsightBanner";
+import { CabinClass, Flight, PriceInsights } from "@/types/flight";
 import { MultiCityLeg } from "@/types/multiCity";
 import { TravelerCounts, totalTravelers } from "@/types/traveler";
 
@@ -76,6 +77,7 @@ function SearchResults() {
     outbound: Flight[];
     returns: Flight[];
     source: DataSource;
+    insights?: PriceInsights;
   } | null>(null);
   const isLoading = results?.key !== searchKey;
   const [alertSaved, setAlertSaved] = useState(false);
@@ -103,6 +105,7 @@ function SearchResults() {
           outbound: outbound.flights,
           returns: ret?.flights ?? NO_FLIGHTS,
           source: outbound.source,
+          insights: outbound.insights,
         })
       )
       .catch(() => {}); // aborted by a newer search
@@ -360,6 +363,12 @@ function SearchResults() {
               currentLowestPrice={
                 outboundFlights.length ? Math.min(...outboundFlights.map((f) => f.price)) : null
               }
+            />
+          )}
+          {results?.key === searchKey && results.insights && outboundFlights.length > 0 && (
+            <PriceInsightBanner
+              insights={results.insights}
+              lowestPrice={Math.min(...outboundFlights.map((f) => f.price))}
             />
           )}
           <section className="mb-10">

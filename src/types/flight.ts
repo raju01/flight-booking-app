@@ -60,3 +60,10 @@ export interface Passenger {
   gender: string;
   travelerType: "adult" | "child" | "infant";
 }
+
+// How today's fares compare with what this route usually costs (Google Flights price insights).
+export interface PriceInsights {
+  level: "low" | "typical" | "high";
+  typicalLow: number;
+  typicalHigh: number;
+}

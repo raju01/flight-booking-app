@@ -1,4 +1,4 @@
-import { CabinClass, Flight } from "@/types/flight";
+import { CabinClass, Flight, PriceInsights } from "@/types/flight";
 import { generateMockFlights } from "@/lib/mockFlights";
 import { registerAirport } from "@/lib/airports";
 import type { DataSource } from "@/lib/flightSearch";
@@ -21,11 +21,15 @@ function toQueryString(query: FlightQuery) {
 export async function fetchFlights(
   query: FlightQuery,
   signal: AbortSignal
-): Promise<{ flights: Flight[]; source: DataSource }> {
+): Promise<{ flights: Flight[]; source: DataSource; insights?: PriceInsights }> {
   try {
     const res = await fetch(`/api/flights?${toQueryString(query)}`, { signal });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const body = (await res.json()) as { flights: Flight[]; source: DataSource };
+    const body = (await res.json()) as {
+      flights: Flight[];
+      source: DataSource;
+      insights?: PriceInsights;
+    };
     for (const flight of body.flights) {
       for (const segment of flight.segments) {
         registerAirport(segment.from);

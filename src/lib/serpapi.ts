@@ -1,4 +1,4 @@
-import { CabinClass, Flight, FlightOffer, FlightSegment } from "@/types/flight";
+import { CabinClass, Flight, FlightOffer, FlightSegment, PriceInsights } from "@/types/flight";
 import { findAirport } from "@/lib/airports";
 
 const REQUEST_TIMEOUT_MS = 30000;
@@ -78,7 +78,24 @@ function toFlight(option: SerpOption, cabinClass: CabinClass): Flight | null {
   };
 }
 
-const searchCache = new Map<string, { at: number; flights: Flight[] }>();
+export interface SerpSearchResult {
+  flights: Flight[];
+  insights?: PriceInsights;
+}
+
+function toInsights(raw: {
+  price_level?: string;
+  typical_price_range?: number[];
+} | undefined): PriceInsights | undefined {
+  const [typicalLow, typicalHigh] = raw?.typical_price_range ?? [];
+  const level = raw?.price_level;
+  if ((level !== "low" && level !== "typical" && level !== "high") || typeof typicalLow !== "number" || typeof typicalHigh !== "number") {
+    return undefined;
+  }
+  return { level, typicalLow, typicalHigh };
+}
+
+const searchCache = new Map<string, { at: number; result: SerpSearchResult }>();
 
 // Prices are per adult: Google Flights is always queried for one passenger.
 export async function searchSerpApiFlights(params: {
@@ -86,10 +103,10 @@ export async function searchSerpApiFlights(params: {
   to: string;
   date: string;
   cabinClass: CabinClass;
-}): Promise<Flight[]> {
+}): Promise<SerpSearchResult> {
   const key = `${params.from}|${params.to}|${params.date}|${params.cabinClass}`;
   const cached = searchCache.get(key);
-  if (cached && Date.now() - cached.at < SEARCH_CACHE_TTL_MS) return cached.flights;
+  if (cached && Date.now() - cached.at < SEARCH_CACHE_TTL_MS) return cached.result;
 
   const query = new URLSearchParams({
     engine: "google_flights",
@@ -111,6 +128,7 @@ export async function searchSerpApiFlights(params: {
     error?: string;
     best_flights?: SerpOption[];
     other_flights?: SerpOption[];
+    price_insights?: { price_level?: string; typical_price_range?: number[] };
   };
 
   let flights: Flight[] = [];
@@ -131,8 +149,9 @@ export async function searchSerpApiFlights(params: {
   if (searchCache.size >= SEARCH_CACHE_MAX_ENTRIES) {
     searchCache.delete(searchCache.keys().next().value as string);
   }
-  searchCache.set(key, { at: Date.now(), flights });
-  return flights;
+  const result: SerpSearchResult = { flights, insights: toInsights(body.price_insights) };
+  searchCache.set(key, { at: Date.now(), result });
+  return result;
 }
 
 // Google only hands out booking links on its own click-tracking host, so nothing else is accepted.

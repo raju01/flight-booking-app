@@ -1,4 +1,4 @@
-import { CabinClass, Flight } from "@/types/flight";
+import { CabinClass, Flight, PriceInsights } from "@/types/flight";
 import { generateMockFlights } from "@/lib/mockFlights";
 import { isSerpApiConfigured, searchSerpApiFlights } from "@/lib/serpapi";
 
@@ -7,6 +7,7 @@ export type DataSource = "live" | "mock";
 export interface FlightSearchResult {
   source: DataSource;
   flights: Flight[];
+  insights?: PriceInsights;
   notice?: string;
 }
 
@@ -27,7 +28,8 @@ export async function searchFlights(params: {
     };
   }
   try {
-    return { source: "live", flights: await searchSerpApiFlights(params) };
+    const { flights, insights } = await searchSerpApiFlights(params);
+    return { source: "live", flights, insights };
   } catch (error) {
     console.error("SerpApi flight search failed, falling back to sample data:", error);
     return {
