@@ -65,14 +65,11 @@ export default function SiteHeader() {
           <Link href="/status" className="hover:text-indigo-600 transition-colors">
             Flight status
           </Link>
-          <Link href="/rewards" className="hover:text-indigo-600 transition-colors">
-            Rewards
+          <Link href="/flights" className="hover:text-indigo-600 transition-colors">
+            Routes
           </Link>
           <Link href="/alerts" className="hover:text-indigo-600 transition-colors">
             Fare alerts
-          </Link>
-          <Link href="/manage" className="hover:text-indigo-600 transition-colors">
-            Manage booking
           </Link>
 
           {isReady && user ? (
@@ -133,8 +130,6 @@ export default function SiteHeader() {
             ["/explore", "Explore"],
             ["/status", "Flight status"],
             ["/alerts", "Fare alerts"],
-            ["/rewards", "Rewards"],
-            ["/manage", "Manage booking"],
           ].map(([href, label]) => (
             <Link
               key={href}
