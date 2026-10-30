@@ -20,6 +20,7 @@ import { formatPrice } from "@/lib/currency";
 import { timeOfDayRange, TimeOfDay } from "@/lib/timeOfDay";
 import { PlaneIcon } from "@/components/icons";
 import PriceInsightBanner from "@/components/PriceInsightBanner";
+import SortTabs, { SortSummary } from "@/components/SortTabs";
 import { CabinClass, Flight, PriceInsights } from "@/types/flight";
 import { MultiCityLeg } from "@/types/multiCity";
 import { TravelerCounts, totalTravelers } from "@/types/traveler";
@@ -154,6 +155,23 @@ function SearchResults() {
     [returnFlights, sortBy, stopsFilter, airlineFilter, maxPrice, timeOfDayFilter, layoverFilter]
   );
 
+  const sortSummary = useMemo<SortSummary | null>(() => {
+    const filtered = filterFlights(outboundFlights, {
+      stopsFilter,
+      airlineFilter,
+      maxPrice,
+      timeOfDayFilter,
+      layoverFilter,
+    });
+    if (filtered.length === 0) return null;
+    const describe = (f: Flight) => ({ price: f.price, minutes: totalDurationMinutes(f) });
+    return {
+      best: describe(sortFlights(filtered, "best")[0]),
+      price: describe(sortFlights(filtered, "price")[0]),
+      duration: describe(sortFlights(filtered, "duration")[0]),
+    };
+  }, [outboundFlights, stopsFilter, airlineFilter, maxPrice, timeOfDayFilter, layoverFilter]);
+
   const fromAirport = findAirport(from);
   const toAirport = findAirport(to);
 
@@ -237,16 +255,6 @@ function SearchResults() {
             <BellIcon className="w-4 h-4" filled={alertSaved} />
             {alertSaved ? "Alert set" : "Set price alert"}
           </button>
-          <span className="text-slate-500 font-medium">Sort by</span>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortBy)}
-            className="border-2 border-slate-200 rounded-full px-3 py-1.5 bg-white cursor-pointer focus:outline-none focus:border-indigo-400"
-          >
-            <option value="best">Best</option>
-            <option value="price">Price</option>
-            <option value="duration">Duration</option>
-          </select>
         </div>
       </div>
 
@@ -382,6 +390,9 @@ function SearchResults() {
               cabinClass={cabinClass}
               onSelectDate={(d) => handleSelectDate("departDate", d)}
             />
+            {sortSummary && !isLoading && (
+              <SortTabs value={sortBy} onChange={setSortBy} summary={sortSummary} />
+            )}
             <FlightList flights={sortedOutbound} isLoading={isLoading} />
           </section>
 
