@@ -133,6 +133,11 @@ export function isIndianAirport(airport: Airport | undefined): boolean {
   return !airport?.country;
 }
 
+// True only for airports in the bundled list that sit in India.
+export function isIndianCode(code: string): boolean {
+  return AIRPORTS.some((a) => a.code === code && isIndianAirport(a));
+}
+
 const registry = new Map<string, Airport>();
 
 // Live search returns airports outside the bundled list; remember them so findAirport can resolve them.
