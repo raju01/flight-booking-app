@@ -4,6 +4,7 @@ import { useState } from "react";
 import SearchForm from "@/components/SearchForm";
 import BusSearchForm from "@/components/BusSearchForm";
 import FareTicker from "@/components/FareTicker";
+import HomeSections from "@/components/HomeSections";
 import { PlaneIcon, BusIcon } from "@/components/icons";
 
 type Mode = "flights" | "bus";
@@ -18,8 +19,8 @@ const HERO_COPY: Record<
   { title: string; subtitle: string; from: string; via: string; to: string }
 > = {
   flights: {
-    title: "Find your next flight",
-    subtitle: "Search hundreds of routes and book in minutes.",
+    title: "Find the lowest fare, every time",
+    subtitle: "We compare the airline and booking sites for the same flight, then show the cheapest first.",
     from: "from-indigo-700",
     via: "via-violet-600",
     to: "to-fuchsia-500",
@@ -57,7 +58,7 @@ export default function Home() {
 
         <div className="relative max-w-5xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-10 sm:pb-14">
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider bg-white/15 border border-white/20 rounded-full px-3 py-1 mb-4">
-            Fast · Simple · Yours
+            Compare · Save · Book
           </span>
           <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-balance">
             {hero.title}
@@ -72,7 +73,7 @@ export default function Home() {
         )}
       </section>
 
-      <section className="relative max-w-5xl mx-auto w-full px-4 sm:px-6 -mt-12 sm:-mt-16 pb-20">
+      <section className="relative max-w-5xl mx-auto w-full px-4 sm:px-6 -mt-12 sm:-mt-16 pb-16">
         <div className="glass-card rounded-3xl shadow-2xl shadow-indigo-900/10">
           <div className="flex p-2 gap-2 rounded-t-3xl overflow-hidden">
             {MODES.map((m) => {
@@ -101,6 +102,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {mode === "flights" && <HomeSections />}
     </div>
   );
 }

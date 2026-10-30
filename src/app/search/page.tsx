@@ -212,7 +212,7 @@ function SearchResults() {
             {departDate}
             {returnDate ? ` – ${returnDate}` : ""} · {formatTravelerSummary(travelers)} ·{" "}
             {cabinClass}
-            {" · "}Book on MakeMyTrip
+            {" · "}Prices compared across sellers
             {results?.key === searchKey && (
               <span className="ml-2 align-middle">
                 <DataSourceBadge source={results.source} />

@@ -10,6 +10,23 @@ type State =
   | { status: "done"; offers: FlightOffer[] }
   | { status: "error" };
 
+const AVATAR_COLORS = ["bg-indigo-500", "bg-fuchsia-500", "bg-emerald-500", "bg-amber-500", "bg-sky-500", "bg-rose-500", "bg-teal-500"];
+
+function SellerAvatar({ name }: { name: string }) {
+  let hash = 0;
+  for (const char of name) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return (
+    <span
+      aria-hidden
+      className={`hidden sm:flex shrink-0 w-9 h-9 rounded-full ${AVATAR_COLORS[hash % AVATAR_COLORS.length]} text-white text-sm font-bold items-center justify-center`}
+    >
+      {name.trim().charAt(0).toUpperCase()}
+    </span>
+  );
+}
+
+const VISIBLE_OFFERS = 5;
+
 // Re-opening a card should not spend another SerpApi credit.
 const offersCache = new Map<string, FlightOffer[]>();
 
@@ -81,8 +98,10 @@ export default function FareCompare({
     return () => controller.abort();
   }, [token, flight]);
 
+  const [showAll, setShowAll] = useState(false);
   const airline = flight.segments[0].airline;
   const offers = state.status === "done" ? state.offers : [];
+  const shown = showAll ? offers : offers.slice(0, VISIBLE_OFFERS);
   const lowest = offers[0];
   const highest = offers[offers.length - 1];
 
@@ -116,15 +135,16 @@ export default function FareCompare({
               )}
             </p>
             <ul className="mt-3 flex flex-col gap-2">
-              {offers.map((offer, index) => (
+              {shown.map((offer, index) => (
                 <li
                   key={`${offer.seller}-${offer.price}`}
                   className={`flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2.5 border ${
                     index === 0 ? "border-emerald-300 shadow-sm shadow-emerald-100" : "border-slate-200"
                   }`}
                 >
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-800 truncate">
+                  <SellerAvatar name={offer.seller} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-slate-800 break-words">
                       {offer.seller}
                       {offer.seller.toLowerCase() === airline.toLowerCase() && (
                         <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-indigo-600">
@@ -133,20 +153,21 @@ export default function FareCompare({
                       )}
                     </p>
                     {index === 0 && (
-                      <p className="text-xs font-semibold text-emerald-600">
-                        {offers.length > 1 ? "Recommended · lowest price" : "Recommended"}
+                      <p className="inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+                        ★ Recommended
+                        {offers.length > 1 && <span className="hidden sm:inline"> · lowest price</span>}
                       </p>
                     )}
                     {index > 0 && (
                       <p className="text-xs text-slate-400">+{formatPrice(offer.price - lowest.price)}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-3">
-                    <p className="text-base font-extrabold text-slate-900">{formatPrice(offer.price)}</p>
+                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                    <p className="text-sm sm:text-base font-extrabold text-slate-900">{formatPrice(offer.price)}</p>
                     <button
                       type="button"
                       onClick={() => bookWith(offer)}
-                      className={`text-sm font-bold rounded-full px-4 py-2 transition-all active:scale-95 cursor-pointer ${
+                      className={`text-sm font-bold rounded-full px-3 sm:px-4 py-2 transition-all active:scale-95 cursor-pointer ${
                         index === 0
                           ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:shadow-lg hover:shadow-emerald-200"
                           : "border-2 border-slate-200 text-slate-700 hover:border-indigo-300"
@@ -158,6 +179,15 @@ export default function FareCompare({
                 </li>
               ))}
             </ul>
+            {offers.length > VISIBLE_OFFERS && (
+              <button
+                type="button"
+                onClick={() => setShowAll((v) => !v)}
+                className="mt-2 w-full rounded-lg border border-dashed border-indigo-200 py-2 text-sm font-semibold text-indigo-600 hover:bg-white cursor-pointer"
+              >
+                {showAll ? "Show fewer sellers" : `Show ${offers.length - VISIBLE_OFFERS} more sellers`}
+              </button>
+            )}
           </>
         )}
 

@@ -99,9 +99,12 @@ export default function SiteHeader() {
               Sign in
             </Link>
           )}
-          <span className="hidden lg:inline px-3 py-1.5 rounded-full bg-slate-900/5">
-            Book on MakeMyTrip
-          </span>
+          <Link
+            href="/"
+            className="hidden lg:inline px-4 py-1.5 rounded-full bg-gradient-to-r from-indigo-600 to-fuchsia-500 text-white font-semibold hover:shadow-lg hover:shadow-violet-300/50 transition-all"
+          >
+            Compare fares
+          </Link>
         </nav>
       </div>
     </header>
