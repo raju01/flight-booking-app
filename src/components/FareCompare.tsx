@@ -6,6 +6,7 @@ import { formatPrice } from "@/lib/currency";
 import { OutboundLink } from "@/lib/outboundLinks";
 import { trackEvent } from "@/lib/track";
 import { baggageSummary, includesCheckedBag } from "@/lib/baggage";
+import { isIndianAirport } from "@/lib/airports";
 import { SOLO, describeParty, payingTravelers, perPerson } from "@/lib/party";
 
 type State =
@@ -119,7 +120,10 @@ export default function FareCompare({
   const offers = state.status === "done" ? state.offers : [];
   // Sellers differ in what the fare includes, so the list can be narrowed to those with a checked bag.
   const [bagOnly, setBagOnly] = useState(false);
-  const canFilterBags = offers.some(includesCheckedBag) && offers.some((o) => !includesCheckedBag(o));
+  // Within India a checked bag is normally part of the fare even when Google does not list it, so filtering
+  // on "listed" would hide most good sellers. The filter is for routes that leave or enter India only.
+  const domestic = flight.segments.every((s) => isIndianAirport(s.from) && isIndianAirport(s.to));
+  const canFilterBags = !domestic && offers.some(includesCheckedBag) && offers.some((o) => !includesCheckedBag(o));
   const listed = bagOnly && canFilterBags ? offers.filter(includesCheckedBag) : offers;
   const shown = showAll ? listed : listed.slice(0, VISIBLE_OFFERS);
   const lowest = offers[0];
@@ -169,7 +173,7 @@ export default function FareCompare({
                   }}
                   className="accent-indigo-600"
                 />
-                Only sellers with a checked bag included
+                Only sellers that list a checked bag
               </label>
             )}
             <ul className="mt-3 flex flex-col gap-2">

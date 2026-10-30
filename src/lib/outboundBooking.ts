@@ -10,9 +10,16 @@ import { TravelerCounts } from "@/types/traveler";
 // approved campaign. Airline sites and Google Flights are not campaigns, so they are not wrapped.
 const CUELINKS_MERCHANT_HOSTS = ["makemytrip.com", "redbus.in", "cleartrip.com", "goibibo.com"];
 
-// Off unless AFFILIATE_ENABLED=true, so a pending or rejected channel cannot break the Book buttons.
+// On by default. Set AFFILIATE_ENABLED=false (or 0, off, no) to send everyone to the plain merchant links.
+// Leaving it on is safe while a channel is pending: trackerWorks() below checks the tracker accepts the
+// link before it is used, and tracking starts by itself once the network approves the channel.
+function affiliateEnabled(): boolean {
+  const value = process.env.AFFILIATE_ENABLED?.trim().toLowerCase();
+  return value !== "false" && value !== "0" && value !== "off" && value !== "no";
+}
+
 function affiliateTemplate(): string | undefined {
-  if (process.env.AFFILIATE_ENABLED?.trim().toLowerCase() !== "true") return undefined;
+  if (!affiliateEnabled()) return undefined;
   const explicit = process.env.AFFILIATE_LINK_TEMPLATE?.trim();
   if (explicit?.includes("{url}")) return explicit;
   const channelId = process.env.CUELINKS_CHANNEL_ID?.trim();
@@ -153,14 +160,28 @@ export function busPartnerUrl(bus: { from: string; to: string; date: string }, t
   return track ? withAffiliate(href) : href;
 }
 
-// Cuelinks sends every click to /broken-links while a channel is pending or disabled. Probe once
-// and remember the answer, so users reach the merchant directly until tracking actually works.
+// Cuelinks sends every click to /broken-links while a channel is pending or disabled, and approval is
+// per merchant campaign. Probe each merchant and remember the answer for a while, so users reach the
+// merchant directly until tracking actually works for it.
 const PROBE_TTL_OK_MS = 5 * 60_000;
 const PROBE_TTL_FAIL_MS = 60_000;
-let probeCache: { ok: boolean; expires: number } | undefined;
+const probeCache = new Map<string, { ok: boolean; expires: number }>();
+
+// The merchant a tracked link points at (its `url` parameter), or the tracker's own host as a fallback.
+function probeKey(trackedUrl: string): string {
+  try {
+    const parsed = new URL(trackedUrl);
+    const target = parsed.searchParams.get("url");
+    return new URL(target ?? trackedUrl).hostname.replace(/^www\./, "");
+  } catch {
+    return "unknown";
+  }
+}
 
 export async function trackerWorks(trackedUrl: string): Promise<boolean> {
-  if (probeCache && probeCache.expires > Date.now()) return probeCache.ok;
+  const key = probeKey(trackedUrl);
+  const cached = probeCache.get(key);
+  if (cached && cached.expires > Date.now()) return cached.ok;
   let ok = false;
   try {
     const res = await fetch(trackedUrl, {
@@ -173,6 +194,6 @@ export async function trackerWorks(trackedUrl: string): Promise<boolean> {
   } catch {
     ok = false;
   }
-  probeCache = { ok, expires: Date.now() + (ok ? PROBE_TTL_OK_MS : PROBE_TTL_FAIL_MS) };
+  probeCache.set(key, { ok, expires: Date.now() + (ok ? PROBE_TTL_OK_MS : PROBE_TTL_FAIL_MS) });
   return ok;
 }

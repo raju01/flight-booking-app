@@ -6,7 +6,9 @@ export function includesCheckedBag(offer: FlightOffer): boolean {
   return (offer.baggage ?? []).some((line) => /checked bag/i.test(line) && /\b(free|included)\b/i.test(line));
 }
 
+// Only ever a positive statement. Google's data lists a carry-on for almost every offer and a checked bag
+// only sometimes, so the absence of a checked bag in it does not mean the fare has none (most Indian
+// economy fares include one).
 export function baggageSummary(offer: FlightOffer): string | null {
-  if (!offer.baggage?.length) return null;
-  return includesCheckedBag(offer) ? "Checked bag included" : "No checked bag listed";
+  return includesCheckedBag(offer) ? "Checked bag included" : null;
 }
