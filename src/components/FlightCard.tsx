@@ -21,14 +21,16 @@ function formatDuration(minutes: number) {
 export default function FlightCard({
   flight,
   isGreenest = false,
+  autoCompare = false,
   style,
 }: {
   flight: Flight;
   isGreenest?: boolean;
+  autoCompare?: boolean;
   style?: React.CSSProperties;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [comparing, setComparing] = useState(false);
+  const [comparing, setComparing] = useState(autoCompare);
   const segment = flight.segments[0];
   const lowSeats = flight.seatsLeft !== undefined && flight.seatsLeft <= 3;
   const emissionsKg = useMemo(() => estimateEmissionsKg(flight), [flight]);
@@ -109,7 +111,7 @@ export default function FlightCard({
       <div className="px-4 sm:px-5 pb-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
         <p className="text-xs text-slate-500">
           {flight.bookingToken
-            ? "Compare sellers, then book with the one you pick."
+            ? "Compare sellers first, then book with the one you pick."
             : `${primary.seller} handles payment, ticket, and changes.`}
         </p>
         <div className="flex flex-wrap gap-2">
@@ -120,7 +122,7 @@ export default function FlightCard({
               aria-expanded={comparing}
               className="bg-gradient-to-r from-indigo-600 to-fuchsia-500 hover:shadow-lg hover:shadow-violet-300/50 active:scale-95 text-white text-sm font-bold rounded-full px-5 py-2.5 transition-all cursor-pointer"
             >
-              {comparing ? "Hide prices" : "Compare prices & book"}
+              {comparing ? "Hide prices" : "Compare prices"}
             </button>
           ) : (
             <a

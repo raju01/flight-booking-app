@@ -3,6 +3,9 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import FlightCard from "@/components/FlightCard";
+
+// Seller prices cost one SerpApi credit per flight, so only the top results load them automatically.
+const AUTO_COMPARE_COUNT = 3;
 import FareCalendar from "@/components/FareCalendar";
 import NearbyAirportSuggestion from "@/components/NearbyAirportSuggestion";
 import DataSourceBadge from "@/components/DataSourceBadge";
@@ -534,6 +537,7 @@ function FlightList({
           key={f.id}
           flight={f}
           isGreenest={f.id === greenestId}
+          autoCompare={i < AUTO_COMPARE_COUNT}
           style={{ animationDelay: `${i * 60}ms` }}
         />
       ))}

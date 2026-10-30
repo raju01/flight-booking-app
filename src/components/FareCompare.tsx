@@ -132,8 +132,10 @@ export default function FareCompare({
                         </span>
                       )}
                     </p>
-                    {index === 0 && offers.length > 1 && (
-                      <p className="text-xs font-semibold text-emerald-600">Lowest price</p>
+                    {index === 0 && (
+                      <p className="text-xs font-semibold text-emerald-600">
+                        {offers.length > 1 ? "Recommended · lowest price" : "Recommended"}
+                      </p>
                     )}
                     {index > 0 && (
                       <p className="text-xs text-slate-400">+{formatPrice(offer.price - lowest.price)}</p>
@@ -150,7 +152,7 @@ export default function FareCompare({
                           : "border-2 border-slate-200 text-slate-700 hover:border-indigo-300"
                       }`}
                     >
-                      Book
+                      {index === 0 ? "Book now" : "Book"}
                     </button>
                   </div>
                 </li>

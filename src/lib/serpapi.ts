@@ -145,10 +145,11 @@ interface SerpBookingOption {
 }
 
 const offersCache = new Map<string, { at: number; offers: FlightOffer[] }>();
+const offersInFlight = new Map<string, Promise<FlightOffer[]>>();
 
 // Lists every seller Google knows for one flight, cheapest first. This is a second SerpApi credit,
 // so the UI only asks when someone opens the comparison. The token is tied to the search that made it.
-export async function fetchFlightOffers(params: {
+export function fetchFlightOffers(params: {
   from: string;
   to: string;
   date: string;
@@ -156,8 +157,21 @@ export async function fetchFlightOffers(params: {
   token: string;
 }): Promise<FlightOffer[]> {
   const cached = offersCache.get(params.token);
-  if (cached && Date.now() - cached.at < SEARCH_CACHE_TTL_MS) return cached.offers;
+  if (cached && Date.now() - cached.at < SEARCH_CACHE_TTL_MS) return Promise.resolve(cached.offers);
+  const pending = offersInFlight.get(params.token);
+  if (pending) return pending;
+  const lookup = requestFlightOffers(params).finally(() => offersInFlight.delete(params.token));
+  offersInFlight.set(params.token, lookup);
+  return lookup;
+}
 
+async function requestFlightOffers(params: {
+  from: string;
+  to: string;
+  date: string;
+  cabinClass: CabinClass;
+  token: string;
+}): Promise<FlightOffer[]> {
   const query = new URLSearchParams({
     engine: "google_flights",
     departure_id: params.from,
