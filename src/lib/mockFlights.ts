@@ -1,6 +1,8 @@
 import { Flight, CabinClass } from "@/types/flight";
 import { findAirport, isIndianAirport } from "@/lib/airports";
 import { seededRandom, seedFromString, pad } from "@/lib/seededRandom";
+import { SOLO, payingTravelers } from "@/lib/party";
+import { TravelerCounts } from "@/types/traveler";
 
 const AIRLINES = [
   { name: "IndiGo", code: "6E" },
@@ -32,7 +34,9 @@ export function generateMockFlights(params: {
   to: string;
   date: string;
   cabinClass: CabinClass;
+  travelers?: TravelerCounts;
 }): Flight[] {
+  const travelers = params.travelers ?? SOLO;
   const fromAirport = findAirport(params.from);
   const toAirport = findAirport(params.to);
   if (!fromAirport || !toAirport) return [];
@@ -59,7 +63,7 @@ export function generateMockFlights(params: {
     const basePrice = international
       ? 14000 + Math.floor(rand() * 36000) + stops * -2500
       : 2500 + Math.floor(rand() * 7000) + stops * -600;
-    const price = Math.round((basePrice * CABIN_MULTIPLIER[params.cabinClass]) / 10) * 10;
+    const price = Math.round((basePrice * CABIN_MULTIPLIER[params.cabinClass] * payingTravelers(travelers)) / 10) * 10;
 
     flights.push({
       id: `${airline.code}-${params.from}-${params.to}-${i}`,
@@ -67,6 +71,7 @@ export function generateMockFlights(params: {
       price,
       currency: "INR",
       cabinClass: params.cabinClass,
+      travelers,
       seatsLeft: 1 + Math.floor(rand() * 9),
       segments: [
         {

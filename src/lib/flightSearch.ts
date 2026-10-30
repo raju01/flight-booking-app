@@ -1,4 +1,5 @@
 import { CabinClass, Flight, PriceInsights } from "@/types/flight";
+import { TravelerCounts } from "@/types/traveler";
 import { generateMockFlights } from "@/lib/mockFlights";
 import { isSerpApiConfigured, searchSerpApiFlights } from "@/lib/serpapi";
 
@@ -19,6 +20,7 @@ export async function searchFlights(params: {
   date: string;
   cabinClass: CabinClass;
   passengers: number;
+  travelers?: TravelerCounts;
 }): Promise<FlightSearchResult> {
   if (!isSerpApiConfigured()) {
     return {

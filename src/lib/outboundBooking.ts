@@ -1,5 +1,7 @@
 import { findAirport, isIndianAirport } from "@/lib/airports";
+import { SOLO } from "@/lib/party";
 import { redbusCity } from "@/lib/redbusCities";
+import { TravelerCounts } from "@/types/traveler";
 
 // Server only. The Cuelinks channel id and tracker template are private env vars, so this module
 // must not be imported from a client component. Browsers reach it through /api/out.
@@ -49,7 +51,13 @@ function slug(value: string): string {
 }
 
 // MakeMyTrip Flights is a Cuelinks campaign (paid per click). The search URL is the deeplink.
-function makeMyTripSearchUrl(from: string, to: string, date: string, cabinClass: string): string {
+function makeMyTripSearchUrl(
+  from: string,
+  to: string,
+  date: string,
+  cabinClass: string,
+  travelers: TravelerCounts
+): string {
   // MakeMyTrip uses a different search for flights that leave India or arrive from abroad.
   const international = !isIndianAirport(findAirport(from)) || !isIndianAirport(findAirport(to));
   const [year, month, day] = date.split("-");
@@ -61,7 +69,7 @@ function makeMyTripSearchUrl(from: string, to: string, date: string, cabinClass:
         : "E";
   const query = new URLSearchParams({
     tripType: "O",
-    paxType: "A-1_C-0_I-0",
+    paxType: `A-${travelers.adults}_C-${travelers.children}_I-${travelers.infants}`,
     intl: String(international),
     cabinClass: cabin,
     ccde: "IN",
@@ -76,19 +84,30 @@ export interface FlightLinkParams {
   date: string;
   airline: string;
   cabinClass: string;
+  travelers?: TravelerCounts;
 }
 
 export function flightPartnerUrl(
-  { from, to, date, airline, cabinClass }: FlightLinkParams,
+  { from, to, date, airline, cabinClass, travelers = SOLO }: FlightLinkParams,
   track = true
 ): string {
   const wrap = track ? withAffiliate : (url: string) => url;
   const partnerTemplate = process.env.NEXT_PUBLIC_FLIGHT_PARTNER_URL?.trim();
   const partnerName = process.env.NEXT_PUBLIC_FLIGHT_PARTNER_NAME?.trim();
   if (partnerTemplate && partnerName) {
-    return wrap(fill(partnerTemplate, { from, to, date, airline }));
+    return wrap(
+      fill(partnerTemplate, {
+        from,
+        to,
+        date,
+        airline,
+        adults: String(travelers.adults),
+        children: String(travelers.children),
+        infants: String(travelers.infants),
+      })
+    );
   }
-  return wrap(makeMyTripSearchUrl(from, to, date, cabinClass));
+  return wrap(makeMyTripSearchUrl(from, to, date, cabinClass, travelers));
 }
 
 const REDBUS_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

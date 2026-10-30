@@ -5,6 +5,7 @@ import { Flight, FlightOffer } from "@/types/flight";
 import { formatPrice } from "@/lib/currency";
 import { OutboundLink } from "@/lib/outboundLinks";
 import { trackEvent } from "@/lib/track";
+import { SOLO, describeParty, payingTravelers, perPerson } from "@/lib/party";
 
 type State =
   | { status: "loading" }
@@ -85,6 +86,7 @@ export default function FareCompare({
         date: first.departureTime.slice(0, 10),
         cabinClass: flight.cabinClass,
         token,
+        ...(flight.travelers ?? SOLO),
       }),
       signal: controller.signal,
     })
@@ -128,6 +130,9 @@ export default function FareCompare({
               {offers.length === 1
                 ? "1 seller found"
                 : `${offers.length} sellers compared · lowest ${formatPrice(lowest.price)}`}
+              {payingTravelers(flight.travelers) > 1 && (
+                <span className="font-normal text-slate-500"> for {describeParty(flight.travelers)}</span>
+              )}
               {offers.length > 1 && highest.price > lowest.price && (
                 <span className="font-normal text-slate-500">
                   {" "}
@@ -164,7 +169,12 @@ export default function FareCompare({
                     )}
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                    <p className="text-sm sm:text-base font-extrabold text-slate-900">{formatPrice(offer.price)}</p>
+                    <div className="text-right">
+                      <p className="text-sm sm:text-base font-extrabold text-slate-900">{formatPrice(offer.price)}</p>
+                      {payingTravelers(flight.travelers) > 1 && (
+                        <p className="text-[10px] text-slate-500">{formatPrice(perPerson(offer.price, flight.travelers))} each</p>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={() => {

@@ -1,4 +1,6 @@
 import { PriceInsights } from "@/types/flight";
+import { TravelerCounts } from "@/types/traveler";
+import { describeParty, payingTravelers } from "@/lib/party";
 import { formatPrice } from "@/lib/currency";
 import PriceHistoryChart from "@/components/PriceHistoryChart";
 
@@ -34,9 +36,11 @@ function markerPosition(price: number, low: number, high: number): number {
 export default function PriceInsightBanner({
   insights,
   lowestPrice,
+  party,
 }: {
   insights: PriceInsights;
   lowestPrice: number;
+  party?: TravelerCounts;
 }) {
   const style = STYLES[insights.level];
   return (
@@ -46,9 +50,9 @@ export default function PriceInsightBanner({
         <p className="font-bold text-slate-900">{style.title} for this route</p>
       </div>
       <p className="mt-1 text-sm text-slate-600">
-        Today&rsquo;s lowest fare is <strong>{formatPrice(lowestPrice)}</strong>. Flights on this route
-        usually cost {formatPrice(insights.typicalLow)} to {formatPrice(insights.typicalHigh)}.{" "}
-        {style.tip}
+        Today&rsquo;s lowest fare is <strong>{formatPrice(lowestPrice)}</strong>
+        {payingTravelers(party) > 1 && <> for {describeParty(party)}</>}. Flights on this route usually cost{" "}
+        {formatPrice(insights.typicalLow)} to {formatPrice(insights.typicalHigh)}. {style.tip}
       </p>
       <div className="relative mt-3 h-2 rounded-full bg-white/70 overflow-hidden" aria-hidden>
         <div className="absolute inset-y-0 left-1/4 right-1/4 rounded-full bg-slate-300" />

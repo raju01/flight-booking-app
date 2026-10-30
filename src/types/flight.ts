@@ -1,4 +1,5 @@
 import { FareTier } from "@/types/fareTier";
+import { TravelerCounts } from "@/types/traveler";
 
 export type CabinClass = "Economy" | "Premium Economy" | "Business" | "First";
 
@@ -24,9 +25,10 @@ export interface Flight {
   id: string;
   segments: FlightSegment[];
   stops: number;
-  price: number;
+  price: number; // total for everyone in `travelers` (live fares), as the seller will charge it
   currency: string;
   cabinClass: CabinClass;
+  travelers?: TravelerCounts;
   seatsLeft?: number; // absent when the provider doesn't report availability
   fareTier?: FareTier;
   priceLocked?: boolean;

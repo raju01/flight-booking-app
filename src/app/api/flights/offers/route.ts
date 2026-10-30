@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { fetchFlightOffers, isSerpApiConfigured } from "@/lib/serpapi";
 import { CabinClass } from "@/types/flight";
+import { parseTravelers } from "@/lib/party";
 import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 
 export const maxDuration = 30;
@@ -17,6 +18,9 @@ export async function POST(request: NextRequest) {
     date?: string;
     cabinClass?: CabinClass;
     token?: string;
+    adults?: number;
+    children?: number;
+    infants?: number;
   } | null;
   const { from = "", to = "", date = "", cabinClass, token = "" } = body ?? {};
   const valid =
@@ -31,7 +35,14 @@ export async function POST(request: NextRequest) {
   if (!isSerpApiConfigured()) return Response.json({ offers: [] });
 
   try {
-    return Response.json({ offers: await fetchFlightOffers({ from, to, date, cabinClass, token }) });
+    return Response.json({ offers: await fetchFlightOffers({
+        from,
+        to,
+        date,
+        cabinClass,
+        token,
+        travelers: parseTravelers((key) => (body as Record<string, unknown>)[key]),
+      }) });
   } catch (error) {
     console.error("Flight offers lookup failed:", error);
     return Response.json({ offers: [], error: "Seller prices are unavailable right now" }, { status: 502 });

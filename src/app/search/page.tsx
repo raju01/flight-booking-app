@@ -71,8 +71,8 @@ function SearchResults() {
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [timeOfDayFilter, setTimeOfDayFilter] = useState<TimeOfDayFilter>("any");
   const [layoverFilter, setLayoverFilter] = useState<LayoverFilter>("any");
-  const passengerCount = travelers.adults + travelers.children;
-  const searchKey = `${from}|${to}|${departDate}|${returnDate}|${cabinClass}|${passengerCount}`;
+  const { adults, children, infants } = travelers;
+  const searchKey = `${from}|${to}|${departDate}|${returnDate}|${cabinClass}|${adults}-${children}-${infants}`;
   const [results, setResults] = useState<{
     key: string;
     outbound: Flight[];
@@ -93,7 +93,7 @@ function SearchResults() {
   useEffect(() => {
     if (!from || !to || !departDate) return;
     const controller = new AbortController();
-    const base = { cabinClass, passengers: passengerCount };
+    const base = { cabinClass, passengers: adults + children, travelers: { adults, children, infants } };
     Promise.all([
       fetchFlights({ ...base, from, to, date: departDate }, controller.signal),
       returnDate
@@ -111,7 +111,7 @@ function SearchResults() {
       )
       .catch(() => {}); // aborted by a newer search
     return () => controller.abort();
-  }, [from, to, departDate, returnDate, cabinClass, passengerCount, searchKey]);
+  }, [from, to, departDate, returnDate, cabinClass, adults, children, infants, searchKey]);
 
   const outboundFlights = results?.key === searchKey ? results.outbound : NO_FLIGHTS;
   const returnFlights = results?.key === searchKey ? results.returns : NO_FLIGHTS;
@@ -362,7 +362,7 @@ function SearchResults() {
         </aside>
 
         <div className="flex-1 min-w-0">
-          {tripType !== "multi-city" && (
+          {tripType !== "multi-city" && results?.key === searchKey && results.source === "mock" && (
             <NearbyAirportSuggestion
               from={from}
               to={to}
@@ -376,6 +376,7 @@ function SearchResults() {
           {results?.key === searchKey && results.insights && outboundFlights.length > 0 && (
             <PriceInsightBanner
               insights={results.insights}
+              party={travelers}
               lowestPrice={Math.min(...outboundFlights.map((f) => f.price))}
             />
           )}
@@ -432,8 +433,8 @@ function MultiCityResults() {
     }
   }, [legsParam]);
 
-  const passengerCount = travelers.adults + travelers.children;
-  const searchKey = `${legsParam}|${cabinClass}|${passengerCount}`;
+  const { adults, children, infants } = travelers;
+  const searchKey = `${legsParam}|${cabinClass}|${adults}-${children}-${infants}`;
   const [legResults, setLegResults] = useState<{
     key: string;
     flights: Flight[][];
@@ -447,7 +448,14 @@ function MultiCityResults() {
     Promise.all(
       legs.map((leg) =>
         fetchFlights(
-          { from: leg.from, to: leg.to, date: leg.date, cabinClass, passengers: passengerCount },
+          {
+            from: leg.from,
+            to: leg.to,
+            date: leg.date,
+            cabinClass,
+            passengers: adults + children,
+            travelers: { adults, children, infants },
+          },
           controller.signal
         )
       )
@@ -461,7 +469,7 @@ function MultiCityResults() {
       )
       .catch(() => {}); // aborted by a newer search
     return () => controller.abort();
-  }, [legs, cabinClass, passengerCount, searchKey]);
+  }, [legs, cabinClass, adults, children, infants, searchKey]);
 
   const legFlights = legResults?.key === searchKey ? legResults.flights : legs.map(() => NO_FLIGHTS);
 

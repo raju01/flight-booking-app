@@ -1,4 +1,5 @@
 import { CabinClass } from "@/types/flight";
+import { parseTravelers } from "@/lib/party";
 
 const CABIN_CLASSES: CabinClass[] = ["Economy", "Premium Economy", "Business", "First"];
 const MAX_PASSENGERS = 9;
@@ -15,5 +16,7 @@ export function parseSearchParams(searchParams: URLSearchParams) {
     /^[A-Z]{3}$/.test(to) &&
     /^\d{4}-\d{2}-\d{2}$/.test(date) &&
     CABIN_CLASSES.includes(cabinClass);
-  return valid ? { from, to, date, cabinClass, passengers: Math.floor(passengers) } : null;
+  if (!valid) return null;
+  const travelers = parseTravelers((key) => searchParams.get(key), Math.floor(passengers));
+  return { from, to, date, cabinClass, passengers: travelers.adults + travelers.children, travelers };
 }

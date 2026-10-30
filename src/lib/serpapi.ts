@@ -1,5 +1,7 @@
 import { CabinClass, Flight, FlightOffer, FlightSegment, PriceInsights } from "@/types/flight";
 import { findAirport } from "@/lib/airports";
+import { SOLO } from "@/lib/party";
+import { TravelerCounts } from "@/types/traveler";
 
 const REQUEST_TIMEOUT_MS = 30000;
 // Each search spends one SerpApi credit, so repeat searches are served from memory for a while.
@@ -45,7 +47,7 @@ function toLocalIso(time: string): string {
   return `${time.replace(" ", "T")}:00`;
 }
 
-function toFlight(option: SerpOption, cabinClass: CabinClass): Flight | null {
+function toFlight(option: SerpOption, cabinClass: CabinClass, travelers: TravelerCounts): Flight | null {
   if (!option.flights?.length || typeof option.price !== "number") return null;
 
   const segments: FlightSegment[] = option.flights.map((s) => ({
@@ -74,6 +76,7 @@ function toFlight(option: SerpOption, cabinClass: CabinClass): Flight | null {
     price: option.price,
     currency: "INR",
     cabinClass,
+    travelers,
     segments,
   };
 }
@@ -104,14 +107,17 @@ function toInsights(raw: {
 
 const searchCache = new Map<string, { at: number; result: SerpSearchResult }>();
 
-// Prices are per adult: Google Flights is always queried for one passenger.
+// Prices are for the whole party (Google returns the total for everyone), so they match what the
+// seller charges at checkout.
 export async function searchSerpApiFlights(params: {
   from: string;
   to: string;
   date: string;
   cabinClass: CabinClass;
+  travelers?: TravelerCounts;
 }): Promise<SerpSearchResult> {
-  const key = `${params.from}|${params.to}|${params.date}|${params.cabinClass}`;
+  const travelers = params.travelers ?? SOLO;
+  const key = `${params.from}|${params.to}|${params.date}|${params.cabinClass}|${travelers.adults}-${travelers.children}-${travelers.infants}`;
   const cached = searchCache.get(key);
   if (cached && Date.now() - cached.at < SEARCH_CACHE_TTL_MS) return cached.result;
 
@@ -125,6 +131,7 @@ export async function searchSerpApiFlights(params: {
     currency: "INR",
     hl: "en",
     gl: "in",
+    ...partyQuery(travelers),
     api_key: process.env.SERPAPI_API_KEY ?? "",
   });
   const res = await fetch(`https://serpapi.com/search?${query}`, {
@@ -148,7 +155,7 @@ export async function searchSerpApiFlights(params: {
     throw new Error(`SerpApi ${res.status}`);
   } else {
     flights = [...(body.best_flights ?? []), ...(body.other_flights ?? [])]
-      .map((option) => toFlight(option, params.cabinClass))
+      .map((option) => toFlight(option, params.cabinClass, travelers))
       .filter((f): f is Flight => f !== null)
       .sort((a, b) => a.price - b.price);
   }
@@ -172,6 +179,15 @@ interface SerpBookingOption {
   };
 }
 
+// Passenger fields for the Google Flights query; a booking token only works with the same party.
+function partyQuery(travelers: TravelerCounts): Record<string, string> {
+  return {
+    adults: String(travelers.adults),
+    ...(travelers.children > 0 && { children: String(travelers.children) }),
+    ...(travelers.infants > 0 && { infants_on_lap: String(travelers.infants) }),
+  };
+}
+
 const offersCache = new Map<string, { at: number; offers: FlightOffer[] }>();
 const offersInFlight = new Map<string, Promise<FlightOffer[]>>();
 
@@ -183,6 +199,7 @@ export function fetchFlightOffers(params: {
   date: string;
   cabinClass: CabinClass;
   token: string;
+  travelers?: TravelerCounts;
 }): Promise<FlightOffer[]> {
   const cached = offersCache.get(params.token);
   if (cached && Date.now() - cached.at < SEARCH_CACHE_TTL_MS) return Promise.resolve(cached.offers);
@@ -199,6 +216,7 @@ async function requestFlightOffers(params: {
   date: string;
   cabinClass: CabinClass;
   token: string;
+  travelers?: TravelerCounts;
 }): Promise<FlightOffer[]> {
   const query = new URLSearchParams({
     engine: "google_flights",
@@ -210,6 +228,7 @@ async function requestFlightOffers(params: {
     currency: "INR",
     hl: "en",
     gl: "in",
+    ...partyQuery(params.travelers ?? SOLO),
     booking_token: params.token,
     api_key: process.env.SERPAPI_API_KEY ?? "",
   });

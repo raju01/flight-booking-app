@@ -1,4 +1,5 @@
 import { CabinClass, Flight, PriceInsights } from "@/types/flight";
+import { TravelerCounts } from "@/types/traveler";
 import { generateMockFlights } from "@/lib/mockFlights";
 import { registerAirport } from "@/lib/airports";
 import type { DataSource } from "@/lib/flightSearch";
@@ -11,10 +12,19 @@ interface FlightQuery {
   date: string;
   cabinClass: CabinClass;
   passengers: number;
+  travelers?: TravelerCounts;
 }
 
-function toQueryString(query: FlightQuery) {
-  return new URLSearchParams({ ...query, passengers: String(query.passengers) }).toString();
+function toQueryString({ travelers, ...query }: FlightQuery) {
+  return new URLSearchParams({
+    ...query,
+    passengers: String(query.passengers),
+    ...(travelers && {
+      adults: String(travelers.adults),
+      children: String(travelers.children),
+      infants: String(travelers.infants),
+    }),
+  }).toString();
 }
 
 // Falls back to sample data if the API route itself is unreachable; aborts still reject.

@@ -1,4 +1,5 @@
 import { airlineBookingLink } from "@/lib/airlineSites";
+import { SOLO } from "@/lib/party";
 import { Flight } from "@/types/flight";
 
 export interface OutboundLink {
@@ -42,6 +43,9 @@ export function flightBookingLinks(flight: Flight): { primary: OutboundLink; sec
       date,
       airline: first.airline,
       cabin: flight.cabinClass,
+      adults: String((flight.travelers ?? SOLO).adults),
+      children: String((flight.travelers ?? SOLO).children),
+      infants: String((flight.travelers ?? SOLO).infants),
     })}`,
     seller,
   };

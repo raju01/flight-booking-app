@@ -5,6 +5,7 @@ import { Flight } from "@/types/flight";
 import { formatPrice } from "@/lib/currency";
 import { estimateEmissionsKg } from "@/lib/emissions";
 import { totalDurationMinutes } from "@/lib/flightDuration";
+import { describeParty, payingTravelers, perPerson } from "@/lib/party";
 import { flightBookingLinks } from "@/lib/outboundLinks";
 import FareCompare from "@/components/FareCompare";
 import { ChevronIcon, PlaneIcon, LeafIcon } from "@/components/icons";
@@ -98,10 +99,15 @@ export default function FlightCard({
 
         <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2 sm:w-36">
           <div className="text-right sm:text-right">
-            <p className="text-[10px] text-slate-500 font-medium">from</p>
+            <p className="text-[10px] text-slate-500 font-medium">
+              {payingTravelers(flight.travelers) > 1 ? `total for ${describeParty(flight.travelers)}` : "from"}
+            </p>
             <p className="text-xl font-extrabold gradient-text [--gradient-from:theme(colors.indigo.600)] [--gradient-to:theme(colors.fuchsia.500)]">
               {formatPrice(flight.price)}
             </p>
+            {payingTravelers(flight.travelers) > 1 && (
+              <p className="text-[11px] text-slate-500">{formatPrice(perPerson(flight.price, flight.travelers))} each</p>
+            )}
           </div>
           <span className="text-xs text-slate-500 flex items-center gap-1">
             details
