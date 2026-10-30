@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchFareCalendar } from "@/lib/liveApi";
 import { formatPrice } from "@/lib/currency";
-import { addDays, parseISODate } from "@/lib/dates";
+import { addDays, futureDate, parseISODate } from "@/lib/dates";
 import { CabinClass } from "@/types/flight";
 import { TravelerCounts } from "@/types/traveler";
 
@@ -46,6 +46,7 @@ export default function FareCalendar({
   );
 
   useEffect(() => {
+    if (date < futureDate(0)) return; // nothing to compare for a day that has passed
     const controller = new AbortController();
     fetchFareCalendar(
       { from, to, date, cabinClass, passengers: adults + children, travelers: { adults, children, infants }, load: requested },
@@ -101,7 +102,9 @@ export default function FareCalendar({
         {days.map(({ date: d, price }) => {
           const isSelected = d === date;
           const isCheapest = typeof price === "number" && price === cheapest && !isSelected;
-          const isDisabled = price === null;
+          // Only checked once prices have loaded (in the browser), so server and browser markup match.
+          const isPast = loaded !== null && d < futureDate(0);
+          const isDisabled = price === null || isPast;
 
           return (
             <button

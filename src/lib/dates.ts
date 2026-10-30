@@ -16,6 +16,12 @@ export function addDays(iso: string, days: number): string {
   return toISODate(date);
 }
 
+// Today in India. Server code uses this, since a UTC server is a day behind for the first 5.5 hours
+// of every Indian morning and would treat today as already over.
+export function todayInIndia(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+}
+
 // Local calendar date `days` from now as YYYY-MM-DD.
 export function futureDate(days: number): string {
   const date = new Date();

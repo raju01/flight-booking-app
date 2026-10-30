@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import FlightCard from "@/components/FlightCard";
 
@@ -13,6 +13,7 @@ import { DataSource, fetchFlights } from "@/lib/liveApi";
 import { lowestEmissionsId } from "@/lib/emissions";
 import { layoverMinutes } from "@/lib/layover";
 import { totalDurationMinutes } from "@/lib/flightDuration";
+import { addDays, futureDate } from "@/lib/dates";
 import { addFareAlert, findFareAlert, removeFareAlert } from "@/lib/fareAlerts";
 import { BellIcon } from "@/components/icons";
 import { findAirport, formatAirport } from "@/lib/airports";
@@ -31,7 +32,16 @@ const NO_FLIGHTS: Flight[] = [];
 type StopsFilter = "any" | "nonstop" | "1stop";
 type TimeOfDayFilter = "any" | TimeOfDay;
 type LayoverFilter = "any" | "short" | "medium" | "long";
-type SortBy = "best" | "price" | "duration";
+type SortBy = "best" | "price" | "duration" | "departure" | "latest" | "stops";
+
+const SORT_OPTIONS: [SortBy, string][] = [
+  ["best", "Best"],
+  ["price", "Cheapest"],
+  ["duration", "Fastest"],
+  ["departure", "Earliest departure"],
+  ["latest", "Latest departure"],
+  ["stops", "Fewest stops"],
+];
 
 function formatTravelerSummary(travelers: TravelerCounts): string {
   const total = totalTravelers(travelers);
@@ -53,6 +63,8 @@ function readTravelerCounts(searchParams: URLSearchParams): TravelerCounts {
     infants: Number.isFinite(infants) && infants > 0 ? infants : 0,
   };
 }
+
+const subscribeNever = () => () => {};
 
 function SearchResults() {
   const router = useRouter();
@@ -93,6 +105,7 @@ function SearchResults() {
 
   useEffect(() => {
     if (!from || !to || !departDate) return;
+    if (departDate < futureDate(0)) return; // flights are sold for today and later only
     const controller = new AbortController();
     const base = { cabinClass, passengers: adults + children, travelers: { adults, children, infants } };
     Promise.all([
@@ -178,6 +191,9 @@ function SearchResults() {
 
   // A different travel date is a different search, so the visitor confirms it first.
   const [pendingChange, setPendingChange] = useState<DateChange | null>(null);
+  // Empty on the server and first render so the page hydrates cleanly; set by the browser after that.
+  const today = useSyncExternalStore(subscribeNever, () => futureDate(0), () => "");
+  const datePassed = Boolean(today && departDate && (departDate < today || (returnDate && returnDate < today)));
 
   function askToChangeDate(
     field: "departDate" | "returnDate",
@@ -227,6 +243,42 @@ function SearchResults() {
     timeOfDayFilter !== "any" ||
     layoverFilter !== "any";
 
+  if (datePassed) {
+    // Today is the earliest date anyone can fly, so offer that instead of showing fares for a day that is gone.
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("departDate", today);
+    if (returnDate) params.set("returnDate", returnDate < today ? addDays(today, 7) : returnDate);
+    return (
+      <div className="max-w-xl mx-auto px-4 py-16 text-center">
+        <span className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-800">
+          Date has passed
+        </span>
+        <h1 className="mt-3 text-2xl font-extrabold text-slate-900">
+          {departDate < today ? departDate : returnDate} is in the past
+        </h1>
+        <p className="mt-2 text-slate-600">
+          Flights can be booked for today and later only. Search from today instead, or pick another date.
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => router.push(`/search?${params.toString()}`)}
+            className="rounded-full bg-gradient-to-r from-indigo-600 to-fuchsia-500 px-6 py-3 font-bold text-white cursor-pointer"
+          >
+            Search from today
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="rounded-full border-2 border-slate-200 bg-white px-6 py-3 font-bold text-slate-700 cursor-pointer"
+          >
+            Choose another date
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!fromAirport || !toAirport || !departDate) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
@@ -262,7 +314,21 @@ function SearchResults() {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <label className="flex items-center gap-2">
+            <span className="text-slate-600 font-medium">Sort by</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortBy)}
+              className="border-2 border-slate-200 rounded-full px-3 py-1.5 bg-white text-slate-800 cursor-pointer focus:outline-none focus:border-indigo-400"
+            >
+              {SORT_OPTIONS.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="button"
             onClick={toggleFareAlert}
@@ -416,7 +482,7 @@ function SearchResults() {
             {sortSummary && !isLoading && (
               <SortTabs value={sortBy} onChange={setSortBy} summary={sortSummary} />
             )}
-            <FlightList flights={sortedOutbound} isLoading={isLoading} />
+            <FlightList flights={sortedOutbound} isLoading={isLoading} filtersActive={filtersActive} />
           </section>
 
           {tripType === "round-trip" && returnDate && (
@@ -430,7 +496,7 @@ function SearchResults() {
                 travelers={travelers}
                 onSelectDate={(d, prices) => askToChangeDate("returnDate", d, prices)}
               />
-              <FlightList flights={sortedReturn} isLoading={isLoading} />
+              <FlightList flights={sortedReturn} isLoading={isLoading} filtersActive={filtersActive} />
             </section>
           )}
         </div>
@@ -563,9 +629,11 @@ function MultiCityResults() {
 function FlightList({
   flights,
   isLoading,
+  filtersActive = true,
 }: {
   flights: Flight[];
   isLoading: boolean;
+  filtersActive?: boolean;
 }) {
   if (isLoading) {
     return (
@@ -586,7 +654,9 @@ function FlightList({
   if (flights.length === 0) {
     return (
       <div className="border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center text-slate-500 text-sm bg-white/50">
-        No flights match your filters. Try adjusting them.
+        {filtersActive
+          ? "No flights match your filters. Try adjusting them."
+          : "No flights found for this date. Try another date, or check nearby airports."}
       </div>
     );
   }
@@ -659,6 +729,11 @@ function sortFlights(flights: Flight[], sortBy: SortBy) {
   if (sortBy === "duration") {
     return copy.sort((a, b) => totalDurationMinutes(a) - totalDurationMinutes(b));
   }
+  // Departure times are local wall-clock ISO strings for the same day, so they sort as text.
+  const departure = (f: Flight) => f.segments[0].departureTime;
+  if (sortBy === "departure") return copy.sort((a, b) => departure(a).localeCompare(departure(b)));
+  if (sortBy === "latest") return copy.sort((a, b) => departure(b).localeCompare(departure(a)));
+  if (sortBy === "stops") return copy.sort((a, b) => a.stops - b.stops || a.price - b.price);
 
   if (copy.length === 0) return copy;
   const prices = copy.map((f) => f.price);

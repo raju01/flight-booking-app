@@ -26,7 +26,7 @@ export default function SortTabs({
   onChange,
   summary,
 }: {
-  value: SortKey;
+  value: string; // the page can sort by more than these three, in which case no tab is highlighted
   onChange: (key: SortKey) => void;
   summary: SortSummary;
 }) {

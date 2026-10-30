@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { searchFlights, DataSource } from "@/lib/flightSearch";
 import { parseSearchParams } from "@/lib/apiParams";
 import { isSerpApiConfigured } from "@/lib/serpapi";
+import { todayInIndia } from "@/lib/dates";
 import { rateLimit, tooManyRequests } from "@/lib/rateLimit";
 
 const SPAN_DAYS = 3;
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     return Response.json({ source: "live", days: [] });
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInIndia();
   const dates = Array.from({ length: SPAN_DAYS * 2 + 1 }, (_, i) => addDays(params.date, i - SPAN_DAYS));
 
   const days = await Promise.all(
