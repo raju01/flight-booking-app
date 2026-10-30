@@ -42,6 +42,7 @@ export interface Flight {
 export interface FlightOffer {
   seller: string;
   logo?: string; // the same partner or airline logo Google Flights shows
+  baggage?: string[]; // what this seller includes, e.g. "1 free carry-on", "2 free checked bags"
   price: number;
   url: string;
   postData: string;

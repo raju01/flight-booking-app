@@ -48,6 +48,13 @@ function toLocalIso(time: string): string {
   return `${time.replace(" ", "T")}:00`;
 }
 
+// Short, plain descriptions of what a seller includes (kept as Google words them).
+function cleanBaggage(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const lines = raw.filter((x): x is string => typeof x === "string").map((x) => x.trim().slice(0, 60)).filter(Boolean);
+  return lines.length ? lines.slice(0, 6) : undefined;
+}
+
 // Logos are shown straight from Google's image host; anything else is ignored.
 function trustedLogo(url: string | undefined): string | undefined {
   if (!url) return undefined;
@@ -229,6 +236,7 @@ interface SerpBookingOption {
   together?: {
     book_with?: string;
     airline_logos?: string[];
+    baggage_prices?: string[];
     price?: number;
     booking_request?: { url?: string; post_data?: string };
   };
@@ -300,7 +308,7 @@ async function requestFlightOffers(params: {
     const o = option.together;
     const request = o?.booking_request;
     if (!o?.book_with || typeof o.price !== "number" || !request?.url?.startsWith(GOOGLE_CLICK_URL)) continue;
-    offers.push({ seller: o.book_with, logo: trustedLogo(o.airline_logos?.[0]), price: o.price, url: request.url, postData: request.post_data ?? "" });
+    offers.push({ seller: o.book_with, logo: trustedLogo(o.airline_logos?.[0]), baggage: cleanBaggage(o.baggage_prices), price: o.price, url: request.url, postData: request.post_data ?? "" });
   }
   offers.sort((a, b) => a.price - b.price);
 

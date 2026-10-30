@@ -5,6 +5,7 @@ import { Flight, FlightOffer } from "@/types/flight";
 import { formatPrice } from "@/lib/currency";
 import { OutboundLink } from "@/lib/outboundLinks";
 import { trackEvent } from "@/lib/track";
+import { baggageSummary, includesCheckedBag } from "@/lib/baggage";
 import { SOLO, describeParty, payingTravelers, perPerson } from "@/lib/party";
 
 type State =
@@ -116,8 +117,13 @@ export default function FareCompare({
   const [showAll, setShowAll] = useState(false);
   const airline = flight.segments[0].airline;
   const offers = state.status === "done" ? state.offers : [];
-  const shown = showAll ? offers : offers.slice(0, VISIBLE_OFFERS);
+  // Sellers differ in what the fare includes, so the list can be narrowed to those with a checked bag.
+  const [bagOnly, setBagOnly] = useState(false);
+  const canFilterBags = offers.some(includesCheckedBag) && offers.some((o) => !includesCheckedBag(o));
+  const listed = bagOnly && canFilterBags ? offers.filter(includesCheckedBag) : offers;
+  const shown = showAll ? listed : listed.slice(0, VISIBLE_OFFERS);
   const lowest = offers[0];
+  const top = listed[0];
   const highest = offers[offers.length - 1];
 
   return (
@@ -152,6 +158,20 @@ export default function FareCompare({
                 </span>
               )}
             </p>
+            {canFilterBags && (
+              <label className="mt-3 flex w-fit items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={bagOnly}
+                  onChange={(e) => {
+                    setBagOnly(e.target.checked);
+                    setShowAll(false);
+                  }}
+                  className="accent-indigo-600"
+                />
+                Only sellers with a checked bag included
+              </label>
+            )}
             <ul className="mt-3 flex flex-col gap-2">
               {shown.map((offer, index) => (
                 <li
@@ -174,11 +194,20 @@ export default function FareCompare({
                     {index === 0 && (
                       <p className="hidden sm:inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
                         ★ Recommended
-                        {offers.length > 1 && <span className="hidden sm:inline"> · lowest price</span>}
+                        {listed.length > 1 && <span className="hidden sm:inline"> · lowest price</span>}
                       </p>
                     )}
-                    {index > 0 && (
-                      <p className="text-xs text-slate-500">+{formatPrice(offer.price - lowest.price)}</p>
+                    {(index > 0 || baggageSummary(offer)) && (
+                      <p className="text-xs text-slate-500" title={offer.baggage?.join(" · ")}>
+                        {index > 0 && <>+{formatPrice(offer.price - top.price)}</>}
+                        {index > 0 && baggageSummary(offer) && " · "}
+                        {baggageSummary(offer) && (
+                          <span className={includesCheckedBag(offer) ? "font-semibold text-emerald-700" : ""}>
+                            {includesCheckedBag(offer) ? "✓ " : ""}
+                            {baggageSummary(offer)}
+                          </span>
+                        )}
+                      </p>
                     )}
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -198,6 +227,7 @@ export default function FareCompare({
                           rank: index + 1,
                           sellers: offers.length,
                           savings: offer.price - lowest.price,
+                          bag: includesCheckedBag(offer),
                           route: `${flight.segments[0].from.code}-${flight.segments[flight.segments.length - 1].to.code}`,
                         });
                         bookWith(offer);
@@ -214,19 +244,19 @@ export default function FareCompare({
                   </div>
                   {index === 0 && (
                     <p className="sm:hidden inline-flex w-fit items-center whitespace-nowrap text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
-                      ★ Recommended{offers.length > 1 && " · lowest price"}
+                      ★ Recommended{listed.length > 1 && " · lowest price"}
                     </p>
                   )}
                 </li>
               ))}
             </ul>
-            {offers.length > VISIBLE_OFFERS && (
+            {listed.length > VISIBLE_OFFERS && (
               <button
                 type="button"
                 onClick={() => setShowAll((v) => !v)}
                 className="mt-2 w-full rounded-lg border border-dashed border-indigo-200 py-2 text-sm font-semibold text-indigo-600 hover:bg-white cursor-pointer"
               >
-                {showAll ? "Show fewer sellers" : `Show ${offers.length - VISIBLE_OFFERS} more sellers`}
+                {showAll ? "Show fewer sellers" : `Show ${listed.length - VISIBLE_OFFERS} more sellers`}
               </button>
             )}
           </>
