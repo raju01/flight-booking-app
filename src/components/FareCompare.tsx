@@ -123,6 +123,10 @@ export default function FareCompare({
   // Within India a checked bag is normally part of the fare even when Google does not list it, so filtering
   // on "listed" would hide most good sellers. The filter is for routes that leave or enter India only.
   const domestic = flight.segments.every((s) => isIndianAirport(s.from) && isIndianAirport(s.to));
+  // Confirmed by Google: say so firmly. Within India, a checked bag is normally part of an economy fare even
+  // when Google does not list it, so say "usually" there (never for routes that leave or enter India).
+  const baggageNote = (offer: FlightOffer): string | null =>
+    baggageSummary(offer) ?? (domestic ? "Check-in bag usually included" : null);
   const canFilterBags = !domestic && offers.some(includesCheckedBag) && offers.some((o) => !includesCheckedBag(o));
   const listed = bagOnly && canFilterBags ? offers.filter(includesCheckedBag) : offers;
   const shown = showAll ? listed : listed.slice(0, VISIBLE_OFFERS);
@@ -201,14 +205,22 @@ export default function FareCompare({
                         {listed.length > 1 && <span className="hidden sm:inline"> · lowest price</span>}
                       </p>
                     )}
-                    {(index > 0 || baggageSummary(offer)) && (
-                      <p className="text-xs text-slate-500" title={offer.baggage?.join(" · ")}>
+                    {(index > 0 || baggageNote(offer)) && (
+                      <p
+                        className="text-xs text-slate-500"
+                        title={
+                          includesCheckedBag(offer)
+                            ? offer.baggage?.join(" · ")
+                            : domestic
+                              ? "Most Indian domestic economy fares include check-in baggage. Google doesn't list it for this seller, so confirm on their site before you book."
+                              : undefined
+                        }
+                      >
                         {index > 0 && <>+{formatPrice(offer.price - top.price)}</>}
-                        {index > 0 && baggageSummary(offer) && " · "}
-                        {baggageSummary(offer) && (
-                          <span className={includesCheckedBag(offer) ? "font-semibold text-emerald-700" : ""}>
-                            {includesCheckedBag(offer) ? "✓ " : ""}
-                            {baggageSummary(offer)}
+                        {index > 0 && baggageNote(offer) && " · "}
+                        {baggageNote(offer) && (
+                          <span className={includesCheckedBag(offer) ? "font-semibold text-emerald-700" : "text-slate-600"}>
+                            <span className="text-emerald-600">✓</span> {baggageNote(offer)}
                           </span>
                         )}
                       </p>
@@ -292,6 +304,7 @@ export default function FareCompare({
         <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
           Prices come from Google Flights and can change at checkout. We list sellers by price, not by
           commission.
+          {domestic && " Check-in baggage is usually included on Indian domestic economy fares, but fare types differ, so confirm on the seller's site."}
         </p>
       </div>
     </div>
