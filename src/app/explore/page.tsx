@@ -9,6 +9,8 @@ import { futureDate } from "@/lib/dates";
 import { formatPrice } from "@/lib/currency";
 import { placeName } from "@/lib/routes";
 import { PlaneIcon } from "@/components/icons";
+import UnavailableNotice from "@/components/UnavailableNotice";
+import { sampleDataAllowed } from "@/lib/sampleData";
 import type { ExploreDestination } from "@/lib/serpExplore";
 
 type Region = "all" | "india" | "world";
@@ -76,7 +78,10 @@ export default function ExplorePage() {
     }).sort((a, b) => a.price - b.price);
   }, [from]);
 
-  const all = hasLive ? live.destinations : isLoading ? [] : sampleDestinations;
+  // Sample fares are for development only; a live site says live fares are unavailable instead.
+  const showSamples = !hasLive && !isLoading && sampleDataAllowed();
+  const noLiveData = !hasLive && !isLoading && !showSamples;
+  const all = hasLive ? live.destinations : showSamples ? sampleDestinations : [];
   const filtered = all.filter((d) => region === "all" || (region === "india") === (d.country === "India"));
   const shown = filtered.slice(0, visible);
 
@@ -130,7 +135,7 @@ export default function ExplorePage() {
             </button>
           ))}
         </div>
-        {fromAirport && !isLoading && (
+        {fromAirport && !isLoading && !noLiveData && (
           <p className="text-xs text-slate-500">
             {hasLive ? "Live return fares from" : "Sample fares from"} {formatAirport(fromAirport)}
             {!hasLive && " · live fares are unavailable right now"}
@@ -147,6 +152,8 @@ export default function ExplorePage() {
             </div>
           ))}
         </div>
+      ) : noLiveData ? (
+        <UnavailableNotice what="fares" />
       ) : shown.length === 0 ? (
         <p className="text-slate-500">No destinations found for this filter. Try another region or airport.</p>
       ) : (

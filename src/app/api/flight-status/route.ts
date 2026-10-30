@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { isAirLabsConfigured, lookupAirLabsStatus } from "@/lib/airlabs";
 import { lookupFlightStatus } from "@/lib/flightStatus";
 import type { DataSource } from "@/lib/flightSearch";
+import { sampleDataAllowed } from "@/lib/sampleData";
 
 // Live providers can take several seconds; without this a short platform default may cut them off.
 export const maxDuration = 30;
@@ -20,9 +21,10 @@ export async function GET(request: NextRequest) {
       const status = await lookupAirLabsStatus(flightNumber, date);
       return Response.json({ source: "live" as DataSource, status });
     } catch (error) {
-      console.error("AirLabs status lookup failed, falling back to sample data:", error);
+      console.error("AirLabs status lookup failed, falling back:", error);
     }
   }
+  if (!sampleDataAllowed()) return Response.json({ source: "unavailable" as DataSource, status: null });
   return Response.json({
     source: "mock" as DataSource,
     status: lookupFlightStatus(flightNumber, date),

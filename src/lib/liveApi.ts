@@ -2,6 +2,7 @@ import { CabinClass, Flight, PriceInsights } from "@/types/flight";
 import { TravelerCounts } from "@/types/traveler";
 import { generateMockFlights } from "@/lib/mockFlights";
 import { registerAirport } from "@/lib/airports";
+import { sampleDataAllowed } from "@/lib/sampleData";
 import type { DataSource } from "@/lib/flightSearch";
 
 export type { DataSource };
@@ -51,7 +52,9 @@ export async function fetchFlights(
     return body;
   } catch (error) {
     if (signal.aborted) throw error;
-    return { flights: generateMockFlights(query), source: "mock" };
+    return sampleDataAllowed()
+      ? { flights: generateMockFlights(query), source: "mock" }
+      : { flights: [], source: "unavailable" };
   }
 }
 

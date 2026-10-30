@@ -5,6 +5,7 @@ import type { DataSource } from "@/lib/flightSearch";
 import { FlightStatusInfo, FlightStatusState } from "@/types/flightStatus";
 import { PlaneIcon } from "@/components/icons";
 import DataSourceBadge from "@/components/DataSourceBadge";
+import UnavailableNotice from "@/components/UnavailableNotice";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -29,7 +30,7 @@ export default function FlightStatusPage() {
   const [flightNumber, setFlightNumber] = useState("6E204");
   const [date, setDate] = useState(todayISO());
   const [result, setResult] = useState<FlightStatusInfo | null | undefined>(undefined);
-  const [source, setSource] = useState<DataSource>("mock");
+  const [source, setSource] = useState<DataSource>("live");
   const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -84,7 +85,9 @@ export default function FlightStatusPage() {
         </button>
       </form>
 
-      {result === null && (
+      {result === null && source === "unavailable" && <UnavailableNotice what="flight status" />}
+
+      {result === null && source !== "unavailable" && (
         <div className="border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center text-slate-500 text-sm bg-white/50">
           No flight found for that number on that date. Live status only covers flights operating
           today or very soon.

@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import BusCard from "@/components/BusCard";
+import UnavailableNotice from "@/components/UnavailableNotice";
 import DataSourceBadge from "@/components/DataSourceBadge";
 import { findAirport } from "@/lib/airports";
 import type { DataSource } from "@/lib/flightSearch";
@@ -227,7 +228,11 @@ function BusResults() {
         </aside>
 
         <div className="flex-1 min-w-0">
-          <BusList buses={filteredBuses} isLoading={isLoading} />
+          <BusList
+            buses={filteredBuses}
+            isLoading={isLoading}
+            unavailable={results?.key === searchKey && results.source === "unavailable"}
+          />
         </div>
       </div>
     </div>
@@ -237,10 +242,13 @@ function BusResults() {
 function BusList({
   buses,
   isLoading,
+  unavailable = false,
 }: {
   buses: Bus[];
   isLoading: boolean;
+  unavailable?: boolean;
 }) {
+  if (unavailable) return <UnavailableNotice what="bus times" />;
   if (isLoading) {
     return (
       <div className="flex flex-col gap-3">

@@ -24,6 +24,7 @@ import PriceInsightBanner from "@/components/PriceInsightBanner";
 import SortTabs, { SortSummary } from "@/components/SortTabs";
 import DateChangeDialog, { DateChange } from "@/components/DateChangeDialog";
 import RoadAlternative from "@/components/RoadAlternative";
+import UnavailableNotice from "@/components/UnavailableNotice";
 import { CabinClass, Flight, PriceInsights } from "@/types/flight";
 import { MultiCityLeg } from "@/types/multiCity";
 import { TravelerCounts, totalTravelers } from "@/types/traveler";
@@ -194,6 +195,7 @@ function SearchResults() {
   const [pendingChange, setPendingChange] = useState<DateChange | null>(null);
   // Empty on the server and first render so the page hydrates cleanly; set by the browser after that.
   const today = useSyncExternalStore(subscribeNever, () => futureDate(0), () => "");
+  const unavailable = results?.key === searchKey && results.source === "unavailable";
   const datePassed = Boolean(today && departDate && (departDate < today || (returnDate && returnDate < today)));
 
   function askToChangeDate(
@@ -332,8 +334,9 @@ function SearchResults() {
           </label>
           <button
             type="button"
+            disabled={outboundFlights.length === 0 && !alertSaved}
             onClick={toggleFareAlert}
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
               alertSaved
                 ? "bg-amber-100 text-amber-700"
                 : "border-2 border-slate-200 bg-white text-slate-600 hover:border-amber-300"
@@ -487,18 +490,20 @@ function SearchResults() {
             <h2 className="text-lg font-bold text-slate-900 mb-3">
               {tripType === "round-trip" ? "Outbound flights" : "Available flights"}
             </h2>
-            <FareCalendar
-              from={from}
-              to={to}
-              date={departDate}
-              cabinClass={cabinClass}
-              travelers={travelers}
-              onSelectDate={(d, prices) => askToChangeDate("departDate", d, prices)}
-            />
+            {!unavailable && (
+              <FareCalendar
+                from={from}
+                to={to}
+                date={departDate}
+                cabinClass={cabinClass}
+                travelers={travelers}
+                onSelectDate={(d, prices) => askToChangeDate("departDate", d, prices)}
+              />
+            )}
             {sortSummary && !isLoading && (
               <SortTabs value={sortBy} onChange={setSortBy} summary={sortSummary} />
             )}
-            <FlightList flights={sortedOutbound} isLoading={isLoading} filtersActive={filtersActive} />
+            <FlightList flights={sortedOutbound} isLoading={isLoading} filtersActive={filtersActive} unavailable={unavailable} />
           </section>
 
           {tripType === "round-trip" && returnDate && (
@@ -512,7 +517,7 @@ function SearchResults() {
                 travelers={travelers}
                 onSelectDate={(d, prices) => askToChangeDate("returnDate", d, prices)}
               />
-              <FlightList flights={sortedReturn} isLoading={isLoading} filtersActive={filtersActive} />
+              <FlightList flights={sortedReturn} isLoading={isLoading} filtersActive={filtersActive} unavailable={unavailable} />
             </section>
           )}
         </div>
@@ -580,7 +585,7 @@ function MultiCityResults() {
         setLegResults({
           key: searchKey,
           flights: all.map((r) => r.flights),
-          source: all.every((r) => r.source === "live") ? "live" : "mock",
+          source: all.every((r) => r.source === "live") ? "live" : all.some((r) => r.source === "unavailable") ? "unavailable" : "mock",
         })
       )
       .catch(() => {}); // aborted by a newer search
@@ -633,7 +638,7 @@ function MultiCityResults() {
                 <span className="text-sm text-slate-500">{leg.date}</span>
               </div>
 
-              <FlightList flights={legFlights[i]} isLoading={isLoading} />
+              <FlightList flights={legFlights[i]} isLoading={isLoading} unavailable={legResults?.key === searchKey && legResults.source === "unavailable"} />
             </section>
           );
         })}
@@ -646,11 +651,14 @@ function FlightList({
   flights,
   isLoading,
   filtersActive = true,
+  unavailable = false,
 }: {
   flights: Flight[];
   isLoading: boolean;
   filtersActive?: boolean;
+  unavailable?: boolean;
 }) {
+  if (unavailable) return <UnavailableNotice what="fares" />;
   if (isLoading) {
     return (
       <div className="flex flex-col gap-3">

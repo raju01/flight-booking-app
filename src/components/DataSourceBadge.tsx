@@ -7,6 +7,7 @@ export default function DataSourceBadge({
   source: DataSource;
   liveLabel?: string;
 }) {
+  if (source === "unavailable") return null;
   return source === "live" ? (
     <span className="text-[11px] font-bold rounded-full px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200">
       {liveLabel}
