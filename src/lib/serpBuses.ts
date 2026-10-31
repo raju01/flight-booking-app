@@ -3,8 +3,7 @@ import { Bus } from "@/types/bus";
 import { isSerpApiConfigured } from "@/lib/serpapi";
 
 const REQUEST_TIMEOUT_MS = 30000;
-// Bus timetables barely change during a day, so they are kept for six hours.
-const SEARCH_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const SEARCH_CACHE_TTL_MS = 10 * 60 * 1000;
 const SEARCH_CACHE_MAX_ENTRIES = 200;
 
 interface TransportRoute {

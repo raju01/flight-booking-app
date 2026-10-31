@@ -4,12 +4,8 @@ import { Suspense, useEffect, useMemo, useState, useSyncExternalStore } from "re
 import { useRouter, useSearchParams } from "next/navigation";
 import FlightCard from "@/components/FlightCard";
 
-// Seller prices cost one SerpApi credit per flight, so only the top result loads them automatically; the
-// rest load when someone clicks Compare prices.
-const AUTO_COMPARE_COUNT = 1;
-
-// A bus only competes with short flights; skipping the bus lookup on long ones saves a credit per search.
-const MAX_FLIGHT_MINUTES_FOR_BUS = 150;
+// Seller prices cost one SerpApi credit per flight, so only the top results load them automatically.
+const AUTO_COMPARE_COUNT = 3;
 import FareCalendar from "@/components/FareCalendar";
 import NearbyAirportSuggestion from "@/components/NearbyAirportSuggestion";
 import DataSourceBadge from "@/components/DataSourceBadge";
@@ -71,10 +67,6 @@ function readTravelerCounts(searchParams: URLSearchParams): TravelerCounts {
 }
 
 const subscribeNever = () => () => {};
-
-function isSoloParty(t: TravelerCounts): boolean {
-  return t.adults === 1 && t.children === 0 && t.infants === 0;
-}
 
 function SearchResults() {
   const router = useRouter();
@@ -471,12 +463,11 @@ function SearchResults() {
               }
             />
           )}
-          {results?.key === searchKey && outboundFlights.length > 0 && (results.insights || !isSoloParty(travelers)) && (
+          {results?.key === searchKey && results.insights && outboundFlights.length > 0 && (
             <PriceInsightBanner
               insights={results.insights}
               party={travelers}
               travelDate={departDate}
-              search={{ from, to, date: departDate, cabinClass }}
               lowestPrice={Math.min(...outboundFlights.map((f) => f.price))}
             />
           )}
@@ -485,8 +476,7 @@ function SearchResults() {
             results.source === "live" &&
             outboundFlights.length > 0 &&
             isIndianAirport(fromAirport) &&
-            isIndianAirport(toAirport) &&
-            Math.min(...outboundFlights.map(totalDurationMinutes)) <= MAX_FLIGHT_MINUTES_FOR_BUS && (
+            isIndianAirport(toAirport) && (
               <RoadAlternative
                 from={from}
                 to={to}
@@ -527,13 +517,7 @@ function SearchResults() {
                 travelers={travelers}
                 onSelectDate={(d, prices) => askToChangeDate("returnDate", d, prices)}
               />
-              <FlightList
-                flights={sortedReturn}
-                isLoading={isLoading}
-                filtersActive={filtersActive}
-                unavailable={unavailable}
-                autoCompareCount={0}
-              />
+              <FlightList flights={sortedReturn} isLoading={isLoading} filtersActive={filtersActive} unavailable={unavailable} />
             </section>
           )}
         </div>
@@ -654,12 +638,7 @@ function MultiCityResults() {
                 <span className="text-sm text-slate-500">{leg.date}</span>
               </div>
 
-              <FlightList
-                flights={legFlights[i]}
-                isLoading={isLoading}
-                unavailable={legResults?.key === searchKey && legResults.source === "unavailable"}
-                autoCompareCount={i === 0 ? 1 : 0}
-              />
+              <FlightList flights={legFlights[i]} isLoading={isLoading} unavailable={legResults?.key === searchKey && legResults.source === "unavailable"} />
             </section>
           );
         })}
@@ -673,13 +652,11 @@ function FlightList({
   isLoading,
   filtersActive = true,
   unavailable = false,
-  autoCompareCount = AUTO_COMPARE_COUNT,
 }: {
   flights: Flight[];
   isLoading: boolean;
   filtersActive?: boolean;
   unavailable?: boolean;
-  autoCompareCount?: number;
 }) {
   if (unavailable) return <UnavailableNotice what="fares" />;
   if (isLoading) {
@@ -717,7 +694,7 @@ function FlightList({
           key={f.id}
           flight={f}
           isGreenest={f.id === greenestId}
-          autoCompare={i < autoCompareCount}
+          autoCompare={i < AUTO_COMPARE_COUNT}
           style={{ animationDelay: `${i * 60}ms` }}
         />
       ))}
