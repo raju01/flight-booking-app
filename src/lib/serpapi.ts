@@ -5,7 +5,8 @@ import { TravelerCounts } from "@/types/traveler";
 
 const REQUEST_TIMEOUT_MS = 30000;
 // Each search spends one SerpApi credit, so repeat searches are served from memory for a while.
-const SEARCH_CACHE_TTL_MS = 10 * 60 * 1000;
+// Every lookup costs a SerpApi credit and fares move slowly, so results are kept for half an hour.
+const SEARCH_CACHE_TTL_MS = 30 * 60 * 1000;
 const SEARCH_CACHE_MAX_ENTRIES = 200;
 
 const TRAVEL_CLASS: Record<CabinClass, string> = {
@@ -151,36 +152,45 @@ function scaleInsights(
   };
 }
 
-export async function searchSerpApiFlights(params: {
+type SearchParams = {
   from: string;
   to: string;
   date: string;
   cabinClass: CabinClass;
   travelers?: TravelerCounts;
-}): Promise<SerpSearchResult> {
-  const result = await searchOnce(params);
-  const travelers = params.travelers ?? SOLO;
-  const isSolo = travelers.adults === 1 && travelers.children === 0 && travelers.infants === 0;
-  if (isSolo || result.flights.length === 0 || result.insights?.history) return result;
-  // The single-traveller search is cached, so this is at most one extra lookup per route and date.
+};
+
+export function searchSerpApiFlights(params: SearchParams): Promise<SerpSearchResult> {
+  return searchOnce(params);
+}
+
+// Price history and the usual range for a group, built from the single-traveller search. This costs one
+// extra lookup, so it only runs when the visitor asks for the chart. The party search is already cached.
+export async function fetchGroupInsights(params: SearchParams): Promise<PriceInsights | undefined> {
+  const party = await searchOnce(params);
+  if (party.insights?.history) return party.insights;
+  if (party.flights.length === 0) return party.insights;
   const solo = await searchOnce({ ...params, travelers: SOLO }).catch(() => null);
-  const partyLowest = Math.min(...result.flights.map((f) => f.price));
-  return { ...result, insights: scaleInsights(result.insights, solo?.insights, partyLowest) };
+  return scaleInsights(party.insights, solo?.insights, Math.min(...party.flights.map((f) => f.price)));
 }
 
 // Prices are for the whole party (Google returns the total for everyone), so they match what the
 // seller charges at checkout.
-async function searchOnce(params: {
-  from: string;
-  to: string;
-  date: string;
-  cabinClass: CabinClass;
-  travelers?: TravelerCounts;
-}): Promise<SerpSearchResult> {
+const searchInFlight = new Map<string, Promise<SerpSearchResult>>();
+
+function searchOnce(params: SearchParams): Promise<SerpSearchResult> {
   const travelers = params.travelers ?? SOLO;
   const key = `${params.from}|${params.to}|${params.date}|${params.cabinClass}|${travelers.adults}-${travelers.children}-${travelers.infants}`;
   const cached = searchCache.get(key);
-  if (cached && Date.now() - cached.at < SEARCH_CACHE_TTL_MS) return cached.result;
+  if (cached && Date.now() - cached.at < SEARCH_CACHE_TTL_MS) return Promise.resolve(cached.result);
+  const pending = searchInFlight.get(key);
+  if (pending) return pending;
+  const lookup = requestSearch(params, travelers, key).finally(() => searchInFlight.delete(key));
+  searchInFlight.set(key, lookup);
+  return lookup;
+}
+
+async function requestSearch(params: SearchParams, travelers: TravelerCounts, key: string): Promise<SerpSearchResult> {
 
   const query = new URLSearchParams({
     engine: "google_flights",
