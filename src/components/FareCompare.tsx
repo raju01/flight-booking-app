@@ -11,7 +11,7 @@ import { SOLO, describeParty, payingTravelers, perPerson } from "@/lib/party";
 
 type State =
   | { status: "loading" }
-  | { status: "done"; offers: FlightOffer[] }
+  | { status: "done"; offers: FlightOffer[]; olderFrom?: string } // olderFrom: when an earlier, fuller list was fetched
   | { status: "error" };
 
 const AVATAR_COLORS = ["bg-indigo-500", "bg-fuchsia-500", "bg-emerald-500", "bg-amber-500", "bg-sky-500", "bg-rose-500", "bg-teal-500"];
@@ -43,8 +43,17 @@ function SellerAvatar({ name, logo }: { name: string; logo?: string }) {
 
 const VISIBLE_OFFERS = 5;
 
+// "12:04 pm", or "30 Oct, 11:50 pm" when it was not today.
+function formatAsOf(iso: string): string {
+  const at = new Date(iso);
+  const time = at.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+  return at.toDateString() === new Date().toDateString()
+    ? time
+    : `${at.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}, ${time}`;
+}
+
 // Re-opening a card should not spend another SerpApi credit.
-const offersCache = new Map<string, FlightOffer[]>();
+const offersCache = new Map<string, { offers: FlightOffer[]; olderFrom?: string }>();
 
 // Google hands out a booking form (URL plus fields), not a plain link, so submit it in a new tab.
 function bookWith(offer: FlightOffer) {
@@ -83,7 +92,7 @@ export default function FareCompare({
   const token = flight.bookingToken ?? "";
   const [state, setState] = useState<State>(() => {
     const cached = offersCache.get(token);
-    return cached ? { status: "done", offers: cached } : { status: "loading" };
+    return cached ? { status: "done", ...cached } : { status: "loading" };
   });
 
   useEffect(() => {
@@ -100,14 +109,16 @@ export default function FareCompare({
         date: first.departureTime.slice(0, 10),
         cabinClass: flight.cabinClass,
         token,
+        flightKey: `${flight.segments.map((s) => s.flightNumber).join("+")}|${first.departureTime}`,
         ...(flight.travelers ?? SOLO),
       }),
       signal: controller.signal,
     })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
-      .then((data: { offers: FlightOffer[] }) => {
-        offersCache.set(token, data.offers);
-        setState({ status: "done", offers: data.offers });
+      .then((data: { offers: FlightOffer[]; asOf?: string; stale?: boolean }) => {
+        const result = { offers: data.offers, olderFrom: data.stale ? data.asOf : undefined };
+        offersCache.set(token, result);
+        setState({ status: "done", ...result });
       })
       .catch((error: unknown) => {
         if ((error as Error).name !== "AbortError") setState({ status: "error" });
@@ -118,6 +129,7 @@ export default function FareCompare({
   const [showAll, setShowAll] = useState(false);
   const airline = flight.segments[0].airline;
   const offers = state.status === "done" ? state.offers : [];
+  const olderFrom = state.status === "done" ? state.olderFrom : undefined;
   // Sellers differ in what the fare includes, so the list can be narrowed to those with a checked bag.
   const [bagOnly, setBagOnly] = useState(false);
   // Within India a checked bag is normally part of the fare even when Google does not list it, so filtering
@@ -166,6 +178,12 @@ export default function FareCompare({
                 </span>
               )}
             </p>
+            {olderFrom && (
+              <p className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-900">
+                Showing the sellers found at {formatAsOf(olderFrom)}. Google&rsquo;s latest lookup listed fewer, so these
+                prices may have changed. The seller&rsquo;s own site shows the final price.
+              </p>
+            )}
             {canFilterBags && (
               <label className="mt-3 flex w-fit items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
                 <input
