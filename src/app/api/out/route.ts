@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { busPartnerUrl, cleartripSearchUrl, flightPartnerUrl, trackerWorks, withAffiliate } from "@/lib/outboundBooking";
+import { busPartnerUrl, flightPartnerUrl, trackerWorks } from "@/lib/outboundBooking";
 import { parseTravelers } from "@/lib/party";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -22,15 +22,8 @@ export async function GET(request: NextRequest) {
     const valid = /^[A-Z]{3}$/.test(from) && /^[A-Z]{3}$/.test(to) && airline.length <= 60 && cabinClass.length <= 20;
     if (!valid) return Response.json({ error: "Invalid parameters" }, { status: 400 });
     const link = { from, to, date, airline, cabinClass, travelers: parseTravelers((key) => params.get(key)) };
-    if (params.get("vendor") === "cleartrip") {
-      const cleartrip = cleartripSearchUrl(link);
-      if (!cleartrip) return Response.json({ error: "Invalid parameters" }, { status: 400 });
-      plain = cleartrip;
-      href = withAffiliate(cleartrip);
-    } else {
-      href = flightPartnerUrl(link);
-      plain = flightPartnerUrl(link, false);
-    }
+    href = flightPartnerUrl(link);
+    plain = flightPartnerUrl(link, false);
   } else if (type === "bus") {
     if (!from || !to || from.length > 60 || to.length > 60) {
       return Response.json({ error: "Invalid parameters" }, { status: 400 });

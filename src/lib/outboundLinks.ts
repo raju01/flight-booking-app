@@ -1,5 +1,4 @@
 import { airlineBookingLink } from "@/lib/airlineSites";
-import { isIndianAirport } from "@/lib/airports";
 import { SOLO } from "@/lib/party";
 import { Flight } from "@/types/flight";
 
@@ -58,30 +57,6 @@ export function flightBookingLinks(flight: Flight): { primary: OutboundLink; sec
       }
     : google;
   return { primary, secondary };
-}
-
-// Another site to check, for flights where Google lists only the airline. A search link, so no price is shown.
-export function cleartripLink(flight: Flight): OutboundLink | null {
-  const first = flight.segments[0];
-  const last = flight.segments[flight.segments.length - 1];
-  if (!isIndianAirport(first.from) || !isIndianAirport(last.to)) return null;
-  const party = flight.travelers ?? SOLO;
-  return {
-    label: "Cleartrip",
-    seller: "Cleartrip",
-    href: `/api/out?${new URLSearchParams({
-      type: "flight",
-      vendor: "cleartrip",
-      from: first.from.code,
-      to: last.to.code,
-      date: first.departureTime.slice(0, 10),
-      airline: first.airline,
-      cabin: flight.cabinClass,
-      adults: String(party.adults),
-      children: String(party.children),
-      infants: String(party.infants),
-    })}`,
-  };
 }
 
 export function busBookingLink(bus: { from: string; to: string; departureTime: string }): OutboundLink {

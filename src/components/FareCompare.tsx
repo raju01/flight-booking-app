@@ -166,13 +166,6 @@ export default function FareCompare({
                 </span>
               )}
             </p>
-            {lowest.price > flight.price && (
-              <p className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-900">
-                The search listed {formatPrice(flight.price)}, but the current booking price is{" "}
-                {formatPrice(lowest.price)}. Google shows two figures for this flight; the booking price is what the
-                seller will charge.
-              </p>
-            )}
             {canFilterBags && (
               <label className="mt-3 flex w-fit items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
                 <input
@@ -294,7 +287,7 @@ export default function FareCompare({
             >
               Share on WhatsApp
             </button>
-            <span>Not listed above? Check:</span>
+            <span>Also check:</span>
             {alternatives.map((link) => (
               <a
                 key={link.href}

@@ -184,7 +184,6 @@ async function searchOnce(params: {
 
   const query = new URLSearchParams({
     engine: "google_flights",
-    show_hidden: "true", // include the itineraries Google demotes (long layovers, dear fares); booking sites show them
     departure_id: params.from,
     arrival_id: params.to,
     outbound_date: params.date,
@@ -284,7 +283,6 @@ async function requestFlightOffers(params: {
 }): Promise<FlightOffer[]> {
   const query = new URLSearchParams({
     engine: "google_flights",
-    show_hidden: "true", // include the itineraries Google demotes (long layovers, dear fares); booking sites show them
     departure_id: params.from,
     arrival_id: params.to,
     outbound_date: params.date,
