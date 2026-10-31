@@ -85,6 +85,26 @@ function makeMyTripSearchUrl(
   return `https://www.makemytrip.com/flight/search?itinerary=${from}-${to}-${day}/${month}/${year}&${query}`;
 }
 
+// Cleartrip is a Cuelinks campaign too. Only domestic searches are built here: that link format was checked
+// against Cleartrip's own results page (route, date and travellers pre-filled).
+export function cleartripSearchUrl({ from, to, date, cabinClass, travelers = SOLO }: FlightLinkParams): string | null {
+  if (!isIndianAirport(findAirport(from)) || !isIndianAirport(findAirport(to))) return null;
+  const [year, month, day] = date.split("-");
+  const query = new URLSearchParams({
+    adults: String(travelers.adults),
+    childs: String(travelers.children),
+    infants: String(travelers.infants),
+    class: cabinClass === "Business" || cabinClass === "First" ? "Business" : cabinClass,
+    depart_date: `${day}/${month}/${year}`,
+    from,
+    to,
+    intl: "n",
+    origin: from,
+    destination: to,
+  });
+  return `https://www.cleartrip.com/flights/results?${query}`;
+}
+
 export interface FlightLinkParams {
   from: string;
   to: string;
