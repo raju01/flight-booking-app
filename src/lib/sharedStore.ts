@@ -4,6 +4,8 @@
 //
 // Anything kept here is a cache: a failed read or write is logged and treated as a miss, never an error.
 
+import { after } from "next/server";
+
 const MAX_LOCAL_ENTRIES = 1000;
 const local = new Map<string, { until: number; raw: string }>();
 
@@ -13,7 +15,7 @@ function redis(): { url: string; token: string } | null {
   return url && token ? { url: url.replace(/\/$/, ""), token } : null;
 }
 
-async function redisCommand(command: (string | number)[]): Promise<unknown> {
+async function redisCommand(command: (string | number)[], timeoutMs: number): Promise<unknown> {
   const store = redis();
   if (!store) return null;
   // No cache option on purpose: API routes then always ask the store, and a page refreshed every few hours may keep
@@ -22,7 +24,7 @@ async function redisCommand(command: (string | number)[]): Promise<unknown> {
     method: "POST",
     headers: { Authorization: `Bearer ${store.token}`, "Content-Type": "application/json" },
     body: JSON.stringify(command),
-    signal: AbortSignal.timeout(2500),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) throw new Error(`Redis ${res.status}`);
   return ((await res.json()) as { result?: unknown }).result ?? null;
@@ -31,7 +33,8 @@ async function redisCommand(command: (string | number)[]): Promise<unknown> {
 export async function getJSON<T>(key: string): Promise<T | null> {
   let raw: string | null = null;
   try {
-    const result = await redisCommand(["GET", key]);
+    // Short, so a slow store costs a search well under a second before it falls back to SerpApi.
+    const result = await redisCommand(["GET", key], 800);
     if (typeof result === "string") raw = result;
   } catch (error) {
     console.error("Shared store unavailable, using server memory:", error);
@@ -53,8 +56,19 @@ export async function setJSON(key: string, value: unknown, ttlSeconds: number): 
   if (local.size >= MAX_LOCAL_ENTRIES) local.delete(local.keys().next().value as string);
   local.set(key, { until: Date.now() + ttlSeconds * 1000, raw });
   try {
-    await redisCommand(["SET", key, raw, "EX", Math.max(1, Math.round(ttlSeconds))]);
+    await redisCommand(["SET", key, raw, "EX", Math.max(1, Math.round(ttlSeconds))], 2500);
   } catch (error) {
     console.error("Shared store: could not write:", error);
+  }
+}
+
+// Runs a cache write after the response has been sent, so a slow store never delays a search. Outside a
+// request (a build, a script) it simply runs on its own.
+export function inBackground(task: Promise<unknown>): void {
+  const safe = task.catch((error) => console.error("Shared store: background write failed:", error));
+  try {
+    after(() => safe);
+  } catch {
+    void safe;
   }
 }

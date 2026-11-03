@@ -32,6 +32,8 @@ test("does not judge two sellers, or an even split, without a yardstick", () => 
 test("uses the airline's own price only when another seller agrees with it", () => {
   assert.deepEqual(flagged([["IndiGo", 10000], ["a", 10200], ["b", 6000]]), ["b"]);
   assert.deepEqual(flagged([["IndiGo", 12000], ["a", 7000], ["b", 7100], ["c", 7300]]), []);
+  // The airline and one agent on a pricier fare type must not outvote three cheaper sellers.
+  assert.deepEqual(flagged([["IndiGo", 12000], ["a", 12500], ["b", 7000], ["c", 7100], ["d", 7300]]), []);
 });
 
 test("lists consistent prices first, cheapest first, then the doubtful ones", () => {

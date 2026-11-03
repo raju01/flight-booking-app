@@ -232,7 +232,7 @@ export default function FareCompare({
                     {recommended && (
                       <p className="hidden sm:inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
                         ★ Recommended
-                        {listed.length > 1 && <span className="hidden sm:inline"> · lowest price</span>}
+                        {listed.length > 1 && doubtful.size === 0 && <span className="hidden sm:inline"> · lowest price</span>}
                       </p>
                     )}
                     {low && (
@@ -299,7 +299,7 @@ export default function FareCompare({
                   </div>
                   {recommended && (
                     <p className="sm:hidden inline-flex w-fit items-center whitespace-nowrap text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
-                      ★ Recommended{listed.length > 1 && " · lowest price"}
+                      ★ Recommended{listed.length > 1 && doubtful.size === 0 && " · lowest price"}
                     </p>
                   )}
                 </li>

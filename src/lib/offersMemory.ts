@@ -1,5 +1,5 @@
 import { FlightOffer } from "@/types/flight";
-import { getJSON, setJSON } from "@/lib/sharedStore";
+import { getJSON, inBackground, setJSON } from "@/lib/sharedStore";
 
 // Google's list of sellers for one flight comes and goes during the day: the same flight can show a dozen
 // booking sites at noon and only the airline an hour later. So the fullest list seen recently is remembered
@@ -25,8 +25,8 @@ async function load(key: string): Promise<Remembered | null> {
   return found && Date.now() - found.at < TTL_SECONDS * 1000 ? found : null;
 }
 
-function save(key: string, value: Remembered): Promise<void> {
-  return setJSON(key, value, TTL_SECONDS);
+function save(key: string, value: Remembered): void {
+  inBackground(setJSON(key, value, TTL_SECONDS));
 }
 
 // Decides what to show: the fresh list when it is at least as full as what we remember (and remembers it),
@@ -36,7 +36,7 @@ export async function reconcileOffers(key: string, fresh: FlightOffer[] | null):
 
   if (fresh && fresh.length > 0 && (!previous || fresh.length >= previous.offers.length)) {
     const at = Date.now();
-    await save(key, { at, offers: fresh });
+    save(key, { at, offers: fresh });
     return { offers: fresh, asOf: new Date(at).toISOString(), stale: false };
   }
   if (previous && (!fresh || fresh.length < previous.offers.length)) {

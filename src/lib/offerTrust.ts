@@ -12,9 +12,12 @@ export function unusuallyLowBelow(offers: FlightOffer[], airline: string): numbe
   const prices = offers.map((o) => o.price).sort((a, b) => a - b);
   let limit: number | null = null;
   const own = offers.find((o) => o.seller.toLowerCase() === airline.toLowerCase());
-  // Only when another seller is close to it, so an airline listing a pricier fare type is not the yardstick.
+  // Only when another seller is close to it and most sellers sit above the cut-off, so an airline listing
+  // a pricier fare type (perhaps with one agent copying it) does not make the cheaper majority look doubtful.
   if (own && offers.some((o) => o !== own && Math.abs(o.price - own.price) <= own.price * 0.1)) {
-    limit = own.price * UNUSUALLY_LOW_RATIO;
+    const cutoff = own.price * UNUSUALLY_LOW_RATIO;
+    const below = prices.filter((p) => p < cutoff).length;
+    if (below < prices.length - below) limit = cutoff;
   }
   if (prices.length >= 3) {
     // The widest gap counts only when more sellers sit above it than below (a tie proves nothing).
