@@ -146,10 +146,13 @@ export default function FareCompare({
   const canFilterBags = !domestic && offers.some(includesCheckedBag) && offers.some((o) => !includesCheckedBag(o));
   const listed = bagOnly && canFilterBags ? offers.filter(includesCheckedBag) : offers;
   const shown = showAll ? listed : listed.slice(0, VISIBLE_OFFERS);
-  // Strictly cheapest first; the cheapest is recommended, even when it is far below the rest (it gets a note).
-  const lowest = offers[0];
-  const highest = offers[offers.length - 1];
-  const top = listed[0];
+  // Strictly cheapest first. Prices far below the rest are listed in place but are often much higher at the
+  // seller's checkout (Kiwi.com: Google said Rs52,984, checkout said Rs90,233), so "lowest", "save up to"
+  // and Recommended use the cheapest of the others.
+  const reliable = offers.filter((o) => !farBelow.has(o));
+  const lowest = reliable[0];
+  const highest = reliable[reliable.length - 1];
+  const top = listed.find((o) => !farBelow.has(o));
 
   return (
     <div className="px-4 sm:px-5 pb-4 sm:pb-5">
@@ -172,11 +175,11 @@ export default function FareCompare({
             <p className="text-sm font-semibold text-slate-800">
               {offers.length === 1
                 ? "1 seller found"
-                : `${offers.length} sellers compared · lowest ${formatPrice(lowest.price)}`}
+                : `${offers.length} sellers compared · ${farBelow.size ? "best price" : "lowest"} ${formatPrice(lowest.price)}`}
               {payingTravelers(flight.travelers) > 1 && (
                 <span className="font-normal text-slate-500"> for {describeParty(flight.travelers)}</span>
               )}
-              {offers.length > 1 && highest.price > lowest.price && (
+              {reliable.length > 1 && highest.price > lowest.price && (
                 <span className="font-normal text-slate-500">
                   {" "}
                   (save up to {formatPrice(highest.price - lowest.price)})
@@ -228,18 +231,18 @@ export default function FareCompare({
                     {recommended && (
                       <p className="hidden sm:inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
                         ★ Recommended
-                        {listed.length > 1 && <span className="hidden sm:inline"> · lowest price</span>}
+                        {listed.length > 1 && <span className="hidden sm:inline"> · {farBelow.size ? "best price" : "lowest price"}</span>}
                       </p>
                     )}
                     {low && (
                       <p
                         className="text-xs font-semibold text-amber-800"
-                        title="Much cheaper than most sellers for this flight. Such fares are often resold or without a checked bag, and some add fees at checkout, so check the fare details before you pay."
+                        title="This seller tells Google a price far below everyone else, but its own checkout is often much higher (we have seen +70%). Check the final price before you pay."
                       >
-                        Much cheaper than most sellers · check fare details
+                        Often much higher at checkout · check before paying
                       </p>
                     )}
-                    {((!recommended && top) || baggageNote(offer)) && (
+                    {((!recommended && !low && top) || baggageNote(offer)) && (
                       <p
                         className="text-xs text-slate-500"
                         title={
@@ -250,8 +253,8 @@ export default function FareCompare({
                               : undefined
                         }
                       >
-                        {!recommended && top && <>+{formatPrice(offer.price - top.price)}</>}
-                        {!recommended && top && baggageNote(offer) && " · "}
+                        {!recommended && !low && top && <>+{formatPrice(offer.price - top.price)}</>}
+                        {!recommended && !low && top && baggageNote(offer) && " · "}
                         {baggageNote(offer) && (
                           <span className={includesCheckedBag(offer) ? "font-semibold text-emerald-700" : "text-slate-600"}>
                             <span className="text-emerald-600">✓</span> {baggageNote(offer)}
@@ -295,7 +298,7 @@ export default function FareCompare({
                   </div>
                   {recommended && (
                     <p className="sm:hidden inline-flex w-fit items-center whitespace-nowrap text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
-                      ★ Recommended{listed.length > 1 && " · lowest price"}
+                      ★ Recommended{listed.length > 1 && (farBelow.size ? " · best price" : " · lowest price")}
                     </p>
                   )}
                 </li>
@@ -361,7 +364,7 @@ export default function FareCompare({
         <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
           Prices come from Google Flights and can change at checkout. We list sellers by price, not by
           commission.
-          {farBelow.size > 0 && " Some sellers are much cheaper than the rest: these fares are often resold or without a checked bag, so check the fare details before you pay."}
+          {farBelow.size > 0 && " Some sellers list prices far below the rest; their own checkout is often much higher, so we recommend the cheapest of the others."}
           {domestic && " Check-in baggage is usually included on Indian domestic economy fares, but fare types differ, so confirm on the seller's site."}
         </p>
       </div>

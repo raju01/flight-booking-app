@@ -1,9 +1,8 @@
 import type { FlightOffer } from "@/types/flight";
 
-// Some sellers price a flight far below everyone else (seen on BLR-GOP: kiss&fly and Kiwi.com 34-40%
-// under the airline's own fare for days, while Skyscanner showed similar deals). These are often real
-// but can come with conditions (resold or no-bag fares, fees at checkout), so they stay in price order
-// and count as the lowest price; the panel only adds a note to check the fare details.
+// Some sellers tell Google a price far below everyone else (BLR-GOP, 3 adults: Kiwi.com listed Rs52,984
+// against the airline's Rs79,902, then asked Rs90,233 at its own checkout). They stay in price order, but
+// the panel warns about them and recommends the cheapest of the other sellers.
 const FAR_BELOW_RATIO = 0.75;
 
 // Prices under this get the note, or null when the list gives no reason for one.
@@ -33,7 +32,7 @@ export function farBelowLimit(offers: FlightOffer[], airline: string): number | 
   return limit;
 }
 
-// Cheapest first, plus the offers far below the rest that get a "check the fare details" note.
+// Cheapest first, plus the offers far below the rest that get a warning and are not recommended.
 export function rankOffers(offers: FlightOffer[], airline: string): { offers: FlightOffer[]; farBelow: Set<FlightOffer> } {
   const limit = farBelowLimit(offers, airline);
   return {
