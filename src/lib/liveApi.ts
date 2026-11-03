@@ -15,15 +15,13 @@ interface FlightQuery {
   passengers: number;
   travelers?: TravelerCounts;
   load?: boolean; // fare calendar only: the visitor asked for live prices
-  fresh?: boolean; // "Refresh prices": skip the stored result
 }
 
-function toQueryString({ travelers, load, fresh, ...query }: FlightQuery) {
+function toQueryString({ travelers, load, ...query }: FlightQuery) {
   return new URLSearchParams({
     ...query,
     passengers: String(query.passengers),
     ...(load && { load: "1" }),
-    ...(fresh && { fresh: "1" }),
     ...(travelers && {
       adults: String(travelers.adults),
       children: String(travelers.children),
@@ -36,7 +34,7 @@ function toQueryString({ travelers, load, fresh, ...query }: FlightQuery) {
 export async function fetchFlights(
   query: FlightQuery,
   signal: AbortSignal
-): Promise<{ flights: Flight[]; source: DataSource; insights?: PriceInsights; fetchedAt?: string }> {
+): Promise<{ flights: Flight[]; source: DataSource; insights?: PriceInsights }> {
   try {
     const res = await fetch(`/api/flights?${toQueryString(query)}`, { signal });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -44,7 +42,6 @@ export async function fetchFlights(
       flights: Flight[];
       source: DataSource;
       insights?: PriceInsights;
-      fetchedAt?: string;
     };
     for (const flight of body.flights) {
       for (const segment of flight.segments) {
@@ -54,8 +51,7 @@ export async function fetchFlights(
     }
     return body;
   } catch (error) {
-    // A failed refresh keeps the results already on screen, so the caller handles it.
-    if (signal.aborted || query.fresh) throw error;
+    if (signal.aborted) throw error;
     return sampleDataAllowed()
       ? { flights: generateMockFlights(query), source: "mock" }
       : { flights: [], source: "unavailable" };

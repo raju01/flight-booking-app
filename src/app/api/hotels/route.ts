@@ -9,11 +9,5 @@ export async function GET(request: NextRequest) {
   if (wait > 0) return tooManyRequests(wait);
   const stay = parseStay((key) => request.nextUrl.searchParams.get(key));
   if (!stay) return Response.json({ error: "Invalid search parameters" }, { status: 400 });
-  // "Refresh prices" skips the stored result and spends a credit, so it has a tighter limit.
-  const fresh = request.nextUrl.searchParams.get("fresh") === "1";
-  if (fresh) {
-    const refreshWait = rateLimit(request, "hotels-refresh", 6);
-    if (refreshWait > 0) return tooManyRequests(refreshWait);
-  }
-  return Response.json(await searchHotels(stay, fresh));
+  return Response.json(await searchHotels(stay));
 }

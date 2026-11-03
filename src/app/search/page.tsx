@@ -26,7 +26,6 @@ import DateChangeDialog, { DateChange } from "@/components/DateChangeDialog";
 import RoadAlternative from "@/components/RoadAlternative";
 import HotelSuggestion from "@/components/HotelSuggestion";
 import SearchProgress from "@/components/SearchProgress";
-import PricesChecked from "@/components/PricesChecked";
 import UnavailableNotice from "@/components/UnavailableNotice";
 import { CabinClass, Flight, PriceInsights } from "@/types/flight";
 import { MultiCityLeg } from "@/types/multiCity";
@@ -97,11 +96,8 @@ function SearchResults() {
     returns: Flight[];
     source: DataSource;
     insights?: PriceInsights;
-    fetchedAt?: string; // the older of the two directions
   } | null>(null);
   const isLoading = results?.key !== searchKey;
-  const [refreshing, setRefreshing] = useState(false);
-  const [refreshError, setRefreshError] = useState<string | null>(null);
   const [alertSaved, setAlertSaved] = useState(false);
 
   useEffect(() => {
@@ -111,31 +107,29 @@ function SearchResults() {
     setAlertSaved(Boolean(findFareAlert(from, to, departDate, cabinClass)));
   }, [from, to, departDate, cabinClass]);
 
-  const query: FlightResultsQuery = { from, to, departDate, returnDate, cabinClass, adults, children, infants, searchKey };
-
   useEffect(() => {
     if (!from || !to || !departDate) return;
     if (departDate < futureDate(0)) return; // flights are sold for today and later only
     const controller = new AbortController();
-    loadFlightResults({ from, to, departDate, returnDate, cabinClass, adults, children, infants, searchKey }, controller.signal)
-      .then(setResults)
+    const base = { cabinClass, passengers: adults + children, travelers: { adults, children, infants } };
+    Promise.all([
+      fetchFlights({ ...base, from, to, date: departDate }, controller.signal),
+      returnDate
+        ? fetchFlights({ ...base, from: to, to: from, date: returnDate }, controller.signal)
+        : null,
+    ])
+      .then(([outbound, ret]) =>
+        setResults({
+          key: searchKey,
+          outbound: outbound.flights,
+          returns: ret?.flights ?? NO_FLIGHTS,
+          source: outbound.source,
+          insights: outbound.insights,
+        })
+      )
       .catch(() => {}); // aborted by a newer search
     return () => controller.abort();
   }, [from, to, departDate, returnDate, cabinClass, adults, children, infants, searchKey]);
-
-  async function refreshPrices() {
-    setRefreshing(true);
-    setRefreshError(null);
-    try {
-      const fresh = await loadFlightResults(query, new AbortController().signal, true);
-      if (fresh.source === "live") setResults(fresh);
-      else setRefreshError("Live prices are unavailable right now. Showing the earlier prices.");
-    } catch {
-      setRefreshError("Couldn't refresh just now. Please try again in a minute.");
-    } finally {
-      setRefreshing(false);
-    }
-  }
 
   const outboundFlights = results?.key === searchKey ? results.outbound : NO_FLIGHTS;
   const returnFlights = results?.key === searchKey ? results.returns : NO_FLIGHTS;
@@ -508,9 +502,6 @@ function SearchResults() {
                 onSelectDate={(d, prices) => askToChangeDate("departDate", d, prices)}
               />
             )}
-            {!isLoading && results?.source === "live" && results.fetchedAt && outboundFlights.length > 0 && (
-              <PricesChecked fetchedAt={results.fetchedAt} onRefresh={refreshPrices} refreshing={refreshing} error={refreshError} />
-            )}
             {sortSummary && !isLoading && (
               <SortTabs value={sortBy} onChange={setSortBy} summary={sortSummary} />
             )}
@@ -659,36 +650,6 @@ function MultiCityResults() {
       </div>
     </div>
   );
-}
-
-interface FlightResultsQuery {
-  from: string;
-  to: string;
-  departDate: string;
-  returnDate: string | undefined;
-  cabinClass: CabinClass;
-  adults: number;
-  children: number;
-  infants: number;
-  searchKey: string;
-}
-
-// Both directions at once; `fresh` asks for live prices instead of a recently stored result.
-async function loadFlightResults(q: FlightResultsQuery, signal: AbortSignal, fresh = false) {
-  const base = { cabinClass: q.cabinClass, passengers: q.adults + q.children, travelers: { adults: q.adults, children: q.children, infants: q.infants }, fresh };
-  const [outbound, ret] = await Promise.all([
-    fetchFlights({ ...base, from: q.from, to: q.to, date: q.departDate }, signal),
-    q.returnDate ? fetchFlights({ ...base, from: q.to, to: q.from, date: q.returnDate }, signal) : null,
-  ]);
-  const times = [outbound.fetchedAt, ret?.fetchedAt].filter((t): t is string => Boolean(t)).sort();
-  return {
-    key: q.searchKey,
-    outbound: outbound.flights,
-    returns: ret?.flights ?? NO_FLIGHTS,
-    source: outbound.source,
-    insights: outbound.insights,
-    fetchedAt: times[0],
-  };
 }
 
 function FlightList({

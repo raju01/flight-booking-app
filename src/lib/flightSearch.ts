@@ -12,7 +12,6 @@ export interface FlightSearchResult {
   flights: Flight[];
   insights?: PriceInsights;
   notice?: string;
-  fetchedAt?: string; // live results: when Google was asked
 }
 
 // Live Google Flights fares when a SerpApi key is configured; otherwise (or if SerpApi fails) the sample generator,
@@ -24,7 +23,7 @@ export async function searchFlights(params: {
   cabinClass: CabinClass;
   passengers: number;
   travelers?: TravelerCounts;
-}, fresh = false): Promise<FlightSearchResult> {
+}): Promise<FlightSearchResult> {
   const unavailable = (notice: string): FlightSearchResult => ({ source: "unavailable", flights: [], notice });
   if (!isSerpApiConfigured()) {
     return sampleDataAllowed()
@@ -32,8 +31,8 @@ export async function searchFlights(params: {
       : unavailable("Live fares are not configured");
   }
   try {
-    const { flights, insights, fetchedAt } = await searchSerpApiFlights(params, fresh);
-    return { source: "live", flights, insights, fetchedAt };
+    const { flights, insights } = await searchSerpApiFlights(params);
+    return { source: "live", flights, insights };
   } catch (error) {
     console.error("SerpApi flight search failed:", error);
     return sampleDataAllowed()

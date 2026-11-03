@@ -7,7 +7,6 @@ import HotelCard, { StayParams } from "@/components/HotelCard";
 import HotelSuggestion from "@/components/HotelSuggestion";
 import UnavailableNotice from "@/components/UnavailableNotice";
 import SearchProgress from "@/components/SearchProgress";
-import PricesChecked from "@/components/PricesChecked";
 import DataSourceBadge from "@/components/DataSourceBadge";
 import { HotelIcon } from "@/components/icons";
 import { formatPrice } from "@/lib/currency";
@@ -37,9 +36,7 @@ function HotelResults() {
   const stay = useMemo<StayParams>(() => ({ city, checkIn, checkOut, adults, nights }), [city, checkIn, checkOut, adults, nights]);
 
   const searchKey = `${city}|${checkIn}|${checkOut}|${adults}`;
-  const [results, setResults] = useState<{ key: string; hotels: Hotel[]; source: DataSource; fetchedAt?: string } | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
-  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [results, setResults] = useState<{ key: string; hotels: Hotel[]; source: DataSource } | null>(null);
   const [failedKey, setFailedKey] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortBy>("price");
   const [minStars, setMinStars] = useState(0);
@@ -54,9 +51,7 @@ function HotelResults() {
     const controller = new AbortController();
     fetch(`/api/hotels?${new URLSearchParams({ city, checkIn, checkOut, adults: String(adults) })}`, { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
-      .then((body: { hotels: Hotel[]; source: DataSource; fetchedAt?: string }) =>
-        setResults({ key: searchKey, hotels: body.hotels, source: body.source, fetchedAt: body.fetchedAt })
-      )
+      .then((body: { hotels: Hotel[]; source: DataSource }) => setResults({ key: searchKey, hotels: body.hotels, source: body.source }))
       .catch((error: unknown) => {
         if ((error as Error).name !== "AbortError") setFailedKey(searchKey);
       });
@@ -64,23 +59,6 @@ function HotelResults() {
   }, [valid, passed, today, city, checkIn, checkOut, adults, searchKey]);
 
   const current = results?.key === searchKey ? results : null;
-  const stayWithList = useMemo(() => ({ ...stay, listFetchedAt: current?.fetchedAt }), [stay, current?.fetchedAt]);
-
-  async function refreshPrices() {
-    setRefreshing(true);
-    setRefreshError(null);
-    try {
-      const res = await fetch(`/api/hotels?${new URLSearchParams({ city, checkIn, checkOut, adults: String(adults), fresh: "1" })}`);
-      if (!res.ok) throw new Error(String(res.status));
-      const body = (await res.json()) as { hotels: Hotel[]; source: DataSource; fetchedAt?: string };
-      if (body.source !== "live") throw new Error("unavailable");
-      setResults({ key: searchKey, hotels: body.hotels, source: body.source, fetchedAt: body.fetchedAt });
-    } catch {
-      setRefreshError("Couldn't refresh just now. Showing the earlier prices; please try again in a minute.");
-    } finally {
-      setRefreshing(false);
-    }
-  }
   const hotels = useMemo(() => current?.hotels ?? [], [current]);
   const priceCeiling = useMemo(() => Math.max(0, ...hotels.map((h) => h.pricePerNight ?? 0)), [hotels]);
   const shown = useMemo(() => {
@@ -237,11 +215,8 @@ function HotelResults() {
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {current?.fetchedAt && (
-                <PricesChecked fetchedAt={current.fetchedAt} onRefresh={refreshPrices} refreshing={refreshing} error={refreshError} accent="amber" />
-              )}
               {shown.map((hotel, i) => (
-                <HotelCard key={`${hotel.id}|${current?.fetchedAt ?? ""}`} hotel={hotel} stay={stayWithList} style={{ animationDelay: `${Math.min(i, 10) * 50}ms` }} />
+                <HotelCard key={hotel.id} hotel={hotel} stay={stay} style={{ animationDelay: `${Math.min(i, 10) * 50}ms` }} />
               ))}
             </div>
           )}

@@ -15,11 +15,7 @@ export async function POST(request: NextRequest) {
   if (!stay || !/^[A-Za-z0-9_-]{10,200}$/.test(token)) {
     return Response.json({ error: "Invalid parameters" }, { status: 400 });
   }
-  // When the hotel list on screen was fetched; stored seller prices older than that are not used.
-  // Only the last 6 hours count, so it cannot be used to force endless live lookups.
-  const listAt = typeof body.listFetchedAt === "string" ? Date.parse(body.listFetchedAt) : NaN;
-  const notBefore = Number.isFinite(listAt) && listAt <= Date.now() && listAt > Date.now() - 6 * 3600_000 ? listAt : 0;
-  const offers = await hotelOffers(stay, token, notBefore);
+  const offers = await hotelOffers(stay, token);
   if (!offers) return Response.json({ error: "Prices are unavailable right now" }, { status: 502 });
   return Response.json({ offers });
 }
