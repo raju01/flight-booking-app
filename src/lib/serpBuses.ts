@@ -1,10 +1,11 @@
 import { findAirport } from "@/lib/airports";
 import { Bus } from "@/types/bus";
 import { isSerpApiConfigured } from "@/lib/serpapi";
+import { getJSON, setJSON } from "@/lib/sharedStore";
 
 const REQUEST_TIMEOUT_MS = 30000;
-const SEARCH_CACHE_TTL_MS = 10 * 60 * 1000;
-const SEARCH_CACHE_MAX_ENTRIES = 200;
+// Bus timetables and "from" fares barely move within a day, and each lookup is a SerpApi credit.
+const SEARCH_CACHE_TTL_SECONDS = 6 * 60 * 60;
 
 interface TransportRoute {
   time?: string;
@@ -85,8 +86,6 @@ function toBus(route: TransportRoute, from: string, to: string, date: string, in
   };
 }
 
-const searchCache = new Map<string, { at: number; buses: Bus[] }>();
-
 export async function searchSerpApiBuses(params: { from: string; to: string; date: string }): Promise<Bus[]> {
   const fromCity = cityName(params.from);
   const toCity = cityName(params.to);
@@ -94,9 +93,9 @@ export async function searchSerpApiBuses(params: { from: string; to: string; dat
     throw new Error("Bus search is not configured");
   }
 
-  const key = `${params.from}|${params.to}|${params.date}`;
-  const cached = searchCache.get(key);
-  if (cached && Date.now() - cached.at < SEARCH_CACHE_TTL_MS) return cached.buses;
+  const key = `serp-buses:v1:${params.from}|${params.to}|${params.date}`;
+  const cached = await getJSON<Bus[]>(key);
+  if (cached) return cached;
 
   const [year, month, day] = params.date.split("-").map(Number);
   const when = new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-GB", {
@@ -132,9 +131,6 @@ export async function searchSerpApiBuses(params: { from: string; to: string; dat
     .filter((bus): bus is Bus => bus !== null)
     .sort((a, b) => (a.price ?? Number.MAX_SAFE_INTEGER) - (b.price ?? Number.MAX_SAFE_INTEGER));
 
-  if (searchCache.size >= SEARCH_CACHE_MAX_ENTRIES) {
-    searchCache.delete(searchCache.keys().next().value as string);
-  }
-  searchCache.set(key, { at: Date.now(), buses });
+  await setJSON(key, buses, SEARCH_CACHE_TTL_SECONDS);
   return buses;
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import RecentFares from "@/components/RecentFares";
 import RouteSearchButton from "@/components/RouteSearchButton";
 import { findAirport } from "@/lib/airports";
 import { nearbyAirportCodes } from "@/lib/nearbyAirports";
@@ -13,9 +14,12 @@ import {
   routeSlug,
 } from "@/lib/routes";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { recentFares } from "@/lib/recentFares";
 
 // Only the curated routes exist; anything else is a 404.
 export const dynamicParams = false;
+// Rebuilt at most hourly so "Fares found recently" picks up new searches.
+export const revalidate = 3600;
 
 export function generateStaticParams() {
   return ROUTES.map((route) => ({ route: routeSlug(route) }));
@@ -59,6 +63,7 @@ export default async function RoutePage({ params }: { params: Promise<{ route: s
     .map((code) => findAirport(code))
     .filter((a) => a !== undefined && a.name !== a.code);
   const related = relatedRoutes(route);
+  const fares = await recentFares(route.from, route.to);
 
   const faqs: { question: string; answer: string }[] = [
     {
@@ -71,7 +76,7 @@ export default async function RoutePage({ params }: { params: Promise<{ route: s
     },
     {
       question: `Can I get an alert when the ${fromName} to ${toName} fare drops?`,
-      answer: `Yes. After you search, choose Set price alert on the results page and we will track the route for you.`,
+      answer: `Yes. After you search, choose Set price alert on the results page. We save the fare on your device, and the Price alerts page shows whether it has gone up or down since.`,
     },
   ];
   if (international) {
@@ -134,6 +139,8 @@ export default async function RoutePage({ params }: { params: Promise<{ route: s
           className="mt-6 inline-block bg-white text-indigo-700 font-bold rounded-full px-6 py-3 hover:shadow-xl transition-all active:scale-95"
         />
       </header>
+
+      <RecentFares from={route.from} to={route.to} fares={fares} />
 
       <section className="mt-10 grid sm:grid-cols-2 gap-4">
         {[from, to].map((airport, i) => (

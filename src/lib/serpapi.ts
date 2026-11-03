@@ -2,11 +2,14 @@ import { CabinClass, Flight, FlightOffer, FlightSegment, PriceInsights } from "@
 import { findAirport } from "@/lib/airports";
 import { SOLO } from "@/lib/party";
 import { TravelerCounts } from "@/types/traveler";
+import { createHash } from "node:crypto";
+import { getJSON, setJSON } from "@/lib/sharedStore";
+import { recordFare } from "@/lib/recentFares";
 
 const REQUEST_TIMEOUT_MS = 30000;
-// Each search spends one SerpApi credit, so repeat searches are served from memory for a while.
-const SEARCH_CACHE_TTL_MS = 10 * 60 * 1000;
-const SEARCH_CACHE_MAX_ENTRIES = 200;
+// Each search and each seller lookup spends one SerpApi credit, so repeats are served from the shared store
+// (every server instance sees it) for a while. SEARCH_CACHE_TTL_SECONDS overrides the default 30 minutes.
+const SEARCH_CACHE_TTL_SECONDS = Number(process.env.SEARCH_CACHE_TTL_SECONDS) || 30 * 60;
 
 const TRAVEL_CLASS: Record<CabinClass, string> = {
   Economy: "1",
@@ -127,7 +130,7 @@ function toInsights(raw: {
   return { level, typicalLow, typicalHigh, history: history.length >= 2 ? history : undefined };
 }
 
-const searchCache = new Map<string, { at: number; result: SerpSearchResult }>();
+const searchesInFlight = new Map<string, Promise<SerpSearchResult>>();
 
 // Google reports price history and the usual range for one traveller only. For a group, scale the
 // single-traveller figures so the last point is today's real group fare (adults-only groups scale
@@ -178,10 +181,21 @@ async function searchOnce(params: {
   travelers?: TravelerCounts;
 }): Promise<SerpSearchResult> {
   const travelers = params.travelers ?? SOLO;
-  const key = `${params.from}|${params.to}|${params.date}|${params.cabinClass}|${travelers.adults}-${travelers.children}-${travelers.infants}`;
-  const cached = searchCache.get(key);
-  if (cached && Date.now() - cached.at < SEARCH_CACHE_TTL_MS) return cached.result;
+  const key = `serp-search:v1:${params.from}|${params.to}|${params.date}|${params.cabinClass}|${travelers.adults}-${travelers.children}-${travelers.infants}`;
+  const pending = searchesInFlight.get(key);
+  if (pending) return pending;
+  const lookup = (async () => (await getJSON<SerpSearchResult>(key)) ?? requestSearch(key, params, travelers))().finally(() =>
+    searchesInFlight.delete(key)
+  );
+  searchesInFlight.set(key, lookup);
+  return lookup;
+}
 
+async function requestSearch(
+  key: string,
+  params: { from: string; to: string; date: string; cabinClass: CabinClass },
+  travelers: TravelerCounts
+): Promise<SerpSearchResult> {
   const query = new URLSearchParams({
     engine: "google_flights",
     departure_id: params.from,
@@ -221,11 +235,17 @@ async function searchOnce(params: {
       .sort((a, b) => a.price - b.price);
   }
 
-  if (searchCache.size >= SEARCH_CACHE_MAX_ENTRIES) {
-    searchCache.delete(searchCache.keys().next().value as string);
-  }
   const result: SerpSearchResult = { flights, insights: toInsights(body.price_insights) };
-  searchCache.set(key, { at: Date.now(), result });
+  await setJSON(key, result, SEARCH_CACHE_TTL_SECONDS);
+  const cheapest = flights[0];
+  if (cheapest && params.cabinClass === "Economy" && travelers.adults === 1 && travelers.children === 0 && travelers.infants === 0) {
+    await recordFare(params.from, params.to, {
+      date: params.date,
+      price: cheapest.price,
+      airline: cheapest.segments[0].airline,
+      seenAt: new Date().toISOString(),
+    }).catch((error) => console.error("Could not record the fare:", error));
+  }
   return result;
 }
 
@@ -251,7 +271,6 @@ function partyQuery(travelers: TravelerCounts): Record<string, string> {
   };
 }
 
-const offersCache = new Map<string, { at: number; offers: FlightOffer[] }>();
 const offersInFlight = new Map<string, Promise<FlightOffer[]>>();
 
 // Lists every seller Google knows for one flight, cheapest first. This is a second SerpApi credit,
@@ -264,16 +283,19 @@ export function fetchFlightOffers(params: {
   token: string;
   travelers?: TravelerCounts;
 }): Promise<FlightOffer[]> {
-  const cached = offersCache.get(params.token);
-  if (cached && Date.now() - cached.at < SEARCH_CACHE_TTL_MS) return Promise.resolve(cached.offers);
-  const pending = offersInFlight.get(params.token);
+  // Tokens are long, so the key is a digest of the token and the party it was made for.
+  const party = params.travelers ?? SOLO;
+  const key = `serp-offers:v1:${createHash("sha256").update(`${params.token}|${party.adults}-${party.children}-${party.infants}`).digest("hex")}`;
+  const pending = offersInFlight.get(key);
   if (pending) return pending;
-  const lookup = requestFlightOffers(params).finally(() => offersInFlight.delete(params.token));
-  offersInFlight.set(params.token, lookup);
+  const lookup = (async () => (await getJSON<FlightOffer[]>(key)) ?? requestFlightOffers(key, params))().finally(() =>
+    offersInFlight.delete(key)
+  );
+  offersInFlight.set(key, lookup);
   return lookup;
 }
 
-async function requestFlightOffers(params: {
+async function requestFlightOffers(key: string, params: {
   from: string;
   to: string;
   date: string;
@@ -311,10 +333,6 @@ async function requestFlightOffers(params: {
     offers.push({ seller: o.book_with, logo: trustedLogo(o.airline_logos?.[0]), baggage: cleanBaggage(o.baggage_prices), price: o.price, url: request.url, postData: request.post_data ?? "" });
   }
   offers.sort((a, b) => a.price - b.price);
-
-  if (offersCache.size >= SEARCH_CACHE_MAX_ENTRIES) {
-    offersCache.delete(offersCache.keys().next().value as string);
-  }
-  offersCache.set(params.token, { at: Date.now(), offers });
+  await setJSON(key, offers, SEARCH_CACHE_TTL_SECONDS);
   return offers;
 }
