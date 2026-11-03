@@ -25,6 +25,7 @@ import SortTabs, { SortSummary } from "@/components/SortTabs";
 import DateChangeDialog, { DateChange } from "@/components/DateChangeDialog";
 import RoadAlternative from "@/components/RoadAlternative";
 import HotelSuggestion from "@/components/HotelSuggestion";
+import SearchProgress from "@/components/SearchProgress";
 import UnavailableNotice from "@/components/UnavailableNotice";
 import { CabinClass, Flight, PriceInsights } from "@/types/flight";
 import { MultiCityLeg } from "@/types/multiCity";
@@ -504,7 +505,7 @@ function SearchResults() {
             {sortSummary && !isLoading && (
               <SortTabs value={sortBy} onChange={setSortBy} summary={sortSummary} />
             )}
-            <FlightList flights={sortedOutbound} isLoading={isLoading} filtersActive={filtersActive} unavailable={unavailable} />
+            <FlightList flights={sortedOutbound} isLoading={isLoading} filtersActive={filtersActive} unavailable={unavailable} showProgress />
           </section>
 
           {tripType === "round-trip" && returnDate && (
@@ -642,7 +643,7 @@ function MultiCityResults() {
                 <span className="text-sm text-slate-500">{leg.date}</span>
               </div>
 
-              <FlightList flights={legFlights[i]} isLoading={isLoading} unavailable={legResults?.key === searchKey && legResults.source === "unavailable"} />
+              <FlightList flights={legFlights[i]} isLoading={isLoading} unavailable={legResults?.key === searchKey && legResults.source === "unavailable"} showProgress={i === 0} />
             </section>
           );
         })}
@@ -656,16 +657,19 @@ function FlightList({
   isLoading,
   filtersActive = true,
   unavailable = false,
+  showProgress = false,
 }: {
   flights: Flight[];
   isLoading: boolean;
   filtersActive?: boolean;
   unavailable?: boolean;
+  showProgress?: boolean; // the first list on the page explains the wait; later ones just shimmer
 }) {
   if (unavailable) return <UnavailableNotice what="fares" />;
   if (isLoading) {
     return (
       <div className="flex flex-col gap-3">
+        {showProgress && <SearchProgress />}
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}

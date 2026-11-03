@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import HotelCard, { StayParams } from "@/components/HotelCard";
 import HotelSuggestion from "@/components/HotelSuggestion";
 import UnavailableNotice from "@/components/UnavailableNotice";
+import SearchProgress from "@/components/SearchProgress";
 import DataSourceBadge from "@/components/DataSourceBadge";
 import { HotelIcon } from "@/components/icons";
 import { formatPrice } from "@/lib/currency";
@@ -201,6 +202,7 @@ function HotelResults() {
             <UnavailableNotice what="hotel prices" />
           ) : loading ? (
             <div className="flex flex-col gap-3">
+              <SearchProgress kind="hotels" />
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="relative h-36 rounded-2xl bg-slate-100 overflow-hidden">
                   <div className="shimmer absolute inset-0" />
