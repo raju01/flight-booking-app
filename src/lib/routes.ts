@@ -3,6 +3,14 @@ import { Airport } from "@/types/flight";
 
 // Routes that get their own landing page. Kept to well-served city pairs so every page is useful.
 const DOMESTIC_HUBS = ["DEL", "BOM", "BLR", "HYD", "MAA", "CCU", "PNQ", "AMD", "GOI", "COK", "JAI", "LKO"];
+// Tier-2 and tier-3 cities, each linked both ways to the three biggest hubs, which fly to all of them
+// directly or with one easy stop. These are routes few comparison sites give their own page.
+const REGIONAL_HUBS = ["DEL", "BOM", "BLR"];
+const REGIONAL_CITIES = [
+  "IXC", "GAU", "PAT", "IXB", "ATQ", "IXR", "BBI", "NAG", "IDR", "VNS", "SXR", "IXJ",
+  "TRV", "CCJ", "IXE", "VTZ", "BDQ", "STV", "RPR", "BHO", "UDR", "IXZ", "DED", "IXL",
+  "CJB", "IXM", "IXD", "RAJ", "IXU", "IMF", "DIB", "JDH", "VGA", "TRZ",
+];
 const INTERNATIONAL_HUBS = ["DEL", "BOM", "BLR", "MAA", "HYD", "CCU"];
 const INTERNATIONAL_DESTINATIONS = [
   "DXB", "AUH", "DOH", "SIN", "BKK", "KUL", "HKG", "LHR", "CDG", "FRA",
@@ -18,6 +26,9 @@ function buildRoutes(): RoutePair[] {
   const routes: RoutePair[] = [];
   for (const from of DOMESTIC_HUBS) {
     for (const to of DOMESTIC_HUBS) if (from !== to) routes.push({ from, to });
+  }
+  for (const hub of REGIONAL_HUBS) {
+    for (const city of REGIONAL_CITIES) routes.push({ from: hub, to: city }, { from: city, to: hub });
   }
   for (const hub of INTERNATIONAL_HUBS) {
     for (const destination of INTERNATIONAL_DESTINATIONS) {

@@ -22,6 +22,10 @@ export const metadata: Metadata = {
   description:
     "Compare flight fares from the airline and booking sites for the same flight, with the lowest price shown first. Domestic and international routes.",
   openGraph: { siteName: SITE_NAME, type: "website" },
+  // Google Search Console's "HTML tag" method: paste only the content="..." value. Needs a redeploy.
+  ...(process.env.GOOGLE_SITE_VERIFICATION?.trim() && {
+    verification: { google: process.env.GOOGLE_SITE_VERIFICATION.trim() },
+  }),
   other: {
     "cuelinks-verification": "VERIFY-CL-SAD4IA1L",
   },
