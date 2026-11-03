@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { busPartnerUrl, flightPartnerUrl, trackerWorks } from "@/lib/outboundBooking";
+import { busPartnerUrl, flightPartnerUrl, trackerWorks, withAffiliate } from "@/lib/outboundBooking";
+import { airlineBookingLink, isAffiliateAirline } from "@/lib/airlineSites";
 import { parseTravelers } from "@/lib/party";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -24,6 +25,16 @@ export async function GET(request: NextRequest) {
     const link = { from, to, date, airline, cabinClass, travelers: parseTravelers((key) => params.get(key)) };
     href = flightPartnerUrl(link);
     plain = flightPartnerUrl(link, false);
+  } else if (type === "airline") {
+    // Only airlines with an active Cuelinks campaign, and only their own site.
+    const airline = params.get("airline") ?? "";
+    const site = isAffiliateAirline(airline) ? airlineBookingLink(airline) : undefined;
+    if (!site) return Response.json({ error: "Invalid parameters" }, { status: 400 });
+    plain = site;
+    href = withAffiliate(site);
+  } else if (type === "merchant" && params.get("name") === "cleartrip") {
+    plain = "https://www.cleartrip.com/flights/";
+    href = withAffiliate(plain);
   } else if (type === "bus") {
     if (!from || !to || from.length > 60 || to.length > 60) {
       return Response.json({ error: "Invalid parameters" }, { status: 400 });

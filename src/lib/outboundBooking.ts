@@ -6,9 +6,19 @@ import { TravelerCounts } from "@/types/traveler";
 // Server only. The Cuelinks channel id and tracker template are private env vars, so this module
 // must not be imported from a client component. Browsers reach it through /api/out.
 
-// Cuelinks pays only when the click hits linksredirect.com and the destination is an
-// approved campaign. Airline sites and Google Flights are not campaigns, so they are not wrapped.
-const CUELINKS_MERCHANT_HOSTS = ["makemytrip.com", "redbus.in", "cleartrip.com", "goibibo.com"];
+// Cuelinks pays only when the click hits linksredirect.com and the destination is an active campaign.
+// Active flight campaigns (dashboard, 2026-11-03): Air India, Air India Express, Akasa Air and Cleartrip. The
+// others listed pass through untracked today (MakeMyTrip pays per click only; Goibibo, redBus and the rest are
+// paused) but are kept so tracking starts if they reopen. Google Flights links are never wrapped.
+const CUELINKS_MERCHANT_HOSTS = [
+  "makemytrip.com",
+  "redbus.in",
+  "cleartrip.com",
+  "goibibo.com",
+  "airindia.com",
+  "airindiaexpress.com",
+  "akasaair.com",
+];
 
 // On by default. Set AFFILIATE_ENABLED=false (or 0, off, no) to send everyone to the plain merchant links.
 // Leaving it on is safe while a channel is pending: trackerWorks() below checks the tracker accepts the

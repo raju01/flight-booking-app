@@ -1,4 +1,4 @@
-import { airlineBookingLink } from "@/lib/airlineSites";
+import { airlineBookingLink, isAffiliateAirline } from "@/lib/airlineSites";
 import { SOLO } from "@/lib/party";
 import { Flight } from "@/types/flight";
 
@@ -57,6 +57,27 @@ export function flightBookingLinks(flight: Flight): { primary: OutboundLink; sec
       }
     : google;
   return { primary, secondary };
+}
+
+// "Book on the airline / Cleartrip" buttons that go through our Cuelinks link. Those campaigns open the
+// merchant's home page rather than a pre-filled search, so these sit beside the normal Book buttons.
+export function directBookingLinks(flight: Flight): OutboundLink[] {
+  const date = flight.segments[0].departureTime.slice(0, 10);
+  const links: OutboundLink[] = [];
+  const airline = flight.segments.map((s) => s.airline).find(isAffiliateAirline);
+  if (airline) {
+    links.push({
+      label: `Book on ${airline}`,
+      seller: airline,
+      href: `/api/out?${new URLSearchParams({ type: "airline", airline, date })}`,
+    });
+  }
+  links.push({
+    label: "Book on Cleartrip",
+    seller: "Cleartrip",
+    href: `/api/out?${new URLSearchParams({ type: "merchant", name: "cleartrip", date })}`,
+  });
+  return links;
 }
 
 export function busBookingLink(bus: { from: string; to: string; departureTime: string }): OutboundLink {

@@ -85,9 +85,11 @@ function shareOnWhatsApp(flight: Flight, price: number) {
 export default function FareCompare({
   flight,
   alternatives,
+  directLinks = [],
 }: {
   flight: Flight;
   alternatives: OutboundLink[];
+  directLinks?: OutboundLink[];
 }) {
   const token = flight.bookingToken ?? "";
   const [state, setState] = useState<State>(() => {
@@ -296,6 +298,27 @@ export default function FareCompare({
           </>
         )}
 
+        {directLinks.length > 0 && state.status !== "loading" && (
+          <div className="mt-3 rounded-lg border border-indigo-100 bg-white p-3">
+            <p className="text-xs leading-relaxed text-slate-600">
+              Prefer to book on the airline&rsquo;s own site or Cleartrip? We may earn a commission, at no extra cost to
+              you. These open the site&rsquo;s own page, so you&rsquo;ll need to search again.
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {directLinks.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer sponsored"
+                  className="rounded-full border-2 border-indigo-200 px-4 py-1.5 text-sm font-bold text-indigo-700 hover:bg-indigo-50"
+                >
+                  {link.label}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
         {alternatives.length > 0 && (
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
             <button

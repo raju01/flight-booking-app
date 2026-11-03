@@ -40,6 +40,13 @@ const AIRLINE_SITES: Record<string, string> = {
   "Air Canada": "https://www.aircanada.com",
 };
 
+// Airlines with an active Cuelinks campaign (checked in the dashboard on 2026-11-03). Vistara now flies as Air India.
+const AFFILIATE_AIRLINES = new Set(["Air India", "Air India Express", "Akasa Air", "Vistara"]);
+
+export function isAffiliateAirline(airline: string): boolean {
+  return AFFILIATE_AIRLINES.has(airline);
+}
+
 export function airlineSite(airline: string): string | undefined {
   return AIRLINE_SITES[airline];
 }

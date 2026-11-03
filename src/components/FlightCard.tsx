@@ -6,7 +6,7 @@ import { formatPrice } from "@/lib/currency";
 import { estimateEmissionsKg } from "@/lib/emissions";
 import { totalDurationMinutes } from "@/lib/flightDuration";
 import { describeParty, payingTravelers, perPerson } from "@/lib/party";
-import { flightBookingLinks } from "@/lib/outboundLinks";
+import { directBookingLinks, flightBookingLinks } from "@/lib/outboundLinks";
 import FareCompare from "@/components/FareCompare";
 import { ChevronIcon, PlaneIcon, LeafIcon } from "@/components/icons";
 
@@ -40,6 +40,9 @@ export default function FlightCard({
   const lowSeats = flight.seatsLeft !== undefined && flight.seatsLeft <= 3;
   const emissionsKg = useMemo(() => estimateEmissionsKg(flight), [flight]);
   const { primary, secondary } = flightBookingLinks(flight);
+  const directLinks = directBookingLinks(flight);
+  // The tracked airline button replaces the plain airline-site link, so it is not listed twice.
+  const hasTrackedAirline = directLinks.some((l) => l.href.includes("type=airline"));
 
   return (
     <div
@@ -166,7 +169,11 @@ export default function FlightCard({
       </div>
 
       {comparing && flight.bookingToken && (
-        <FareCompare flight={flight} alternatives={[primary, ...(secondary ? [secondary] : [])]} />
+        <FareCompare
+          flight={flight}
+          directLinks={directLinks}
+          alternatives={[primary, ...(secondary && !hasTrackedAirline ? [secondary] : [])]}
+        />
       )}
 
       <div
