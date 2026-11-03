@@ -12,6 +12,7 @@ export interface StayParams {
   checkOut: string;
   adults: number;
   nights: number;
+  listFetchedAt?: string; // seller prices must be no older than the hotel list on screen
 }
 
 type OffersState = { status: "loading" } | { status: "done"; offers: HotelOffer[] } | { status: "error" };
@@ -21,7 +22,7 @@ const VISIBLE_OFFERS = 5;
 const offersCache = new Map<string, HotelOffer[]>();
 
 function HotelCompare({ hotel, stay }: { hotel: Hotel; stay: StayParams }) {
-  const cacheKey = `${hotel.id}|${stay.checkIn}|${stay.checkOut}|${stay.adults}`;
+  const cacheKey = `${hotel.id}|${stay.checkIn}|${stay.checkOut}|${stay.adults}|${stay.listFetchedAt ?? ""}`;
   const [state, setState] = useState<OffersState>(() => {
     const cached = offersCache.get(cacheKey);
     return cached ? { status: "done", offers: cached } : { status: "loading" };
@@ -34,7 +35,14 @@ function HotelCompare({ hotel, stay }: { hotel: Hotel; stay: StayParams }) {
     fetch("/api/hotels/offers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: hotel.id, city: stay.city, checkIn: stay.checkIn, checkOut: stay.checkOut, adults: stay.adults }),
+      body: JSON.stringify({
+        token: hotel.id,
+        city: stay.city,
+        checkIn: stay.checkIn,
+        checkOut: stay.checkOut,
+        adults: stay.adults,
+        listFetchedAt: stay.listFetchedAt,
+      }),
       signal: controller.signal,
     })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))

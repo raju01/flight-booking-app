@@ -125,38 +125,50 @@ async function serpRequest<T>(query: Record<string, string>): Promise<T> {
 
 const inFlight = new Map<string, Promise<unknown>>();
 
-// Identical lookups share one request, and answers are kept in the shared store.
-function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
-  const pending = inFlight.get(key) as Promise<T> | undefined;
+// A refresh within this long of the last live lookup gets that lookup, so it cannot burn credits.
+const MIN_REFRESH_AGE_MS = 2 * 60 * 1000;
+
+interface Stamped<T> {
+  fetchedAt: string; // when Google was asked
+  value: T;
+}
+
+// Identical lookups share one request, and answers are kept in the shared store. A stored answer is
+// skipped when it is older than `notBefore` (ms), e.g. for "Refresh prices".
+function cached<T>(key: string, load: () => Promise<T>, notBefore = 0): Promise<Stamped<T>> {
+  const flightKey = notBefore ? `${key}#${notBefore}` : key;
+  const pending = inFlight.get(flightKey) as Promise<Stamped<T>> | undefined;
   if (pending) return pending;
   const lookup = (async () => {
-    const hit = await getJSON<T>(key);
-    if (hit) return hit;
-    const fresh = await load();
+    const hit = await getJSON<Stamped<T>>(key);
+    if (hit && Date.parse(hit.fetchedAt) >= notBefore) return hit;
+    const fresh: Stamped<T> = { fetchedAt: new Date().toISOString(), value: await load() };
     inBackground(setJSON(key, fresh, CACHE_TTL_SECONDS));
     return fresh;
-  })().finally(() => inFlight.delete(key));
-  inFlight.set(key, lookup);
+  })().finally(() => inFlight.delete(flightKey));
+  inFlight.set(flightKey, lookup);
   return lookup;
 }
 
 const searchKey = (s: StaySearch) => `${s.query}|${s.checkIn}|${s.checkOut}|${s.adults}`;
 
 // Up to 20 stays Google lists for the place and dates, cheapest first (unpriced ones last).
-export function searchSerpApiHotels(search: StaySearch): Promise<Hotel[]> {
-  return cached(`serp-hotels:v1:${searchKey(search)}`, async () => {
+export async function searchSerpApiHotels(search: StaySearch, fresh = false): Promise<{ hotels: Hotel[]; fetchedAt: string }> {
+  const { value, fetchedAt } = await cached(`serp-hotels:v2:${searchKey(search)}`, async () => {
     const body = await serpRequest<{ properties?: SerpProperty[] }>(baseQuery(search));
     return (body.properties ?? [])
       .map(toHotel)
       .filter((h): h is Hotel => h !== null)
       .sort((a, b) => (a.pricePerNight ?? Number.MAX_SAFE_INTEGER) - (b.pricePerNight ?? Number.MAX_SAFE_INTEGER));
-  });
+  }, fresh ? Date.now() - MIN_REFRESH_AGE_MS : 0);
+  return { hotels: value, fetchedAt };
 }
 
 // Every booking site Google lists for one stay, cheapest per night first. A second credit, so the UI
-// only asks when someone opens the comparison.
-export function fetchHotelOffers(search: StaySearch, token: string): Promise<HotelOffer[]> {
-  return cached(`serp-hotel-offers:v1:${searchKey(search)}|${token}`, async () => {
+// only asks when someone opens the comparison. `notBefore` (ms): ignore stored prices older than the
+// hotel list on screen, so refreshed lists never show older seller prices.
+export async function fetchHotelOffers(search: StaySearch, token: string, notBefore = 0): Promise<HotelOffer[]> {
+  const { value } = await cached(`serp-hotel-offers:v2:${searchKey(search)}|${token}`, async () => {
     const body = await serpRequest<{ prices?: SerpHotelPrice[] }>({ ...baseQuery(search), property_token: token });
     const offers: HotelOffer[] = [];
     for (const p of body.prices ?? []) {
@@ -174,5 +186,6 @@ export function fetchHotelOffers(search: StaySearch, token: string): Promise<Hot
       });
     }
     return offers.sort((a, b) => a.pricePerNight - b.pricePerNight);
-  });
+  }, notBefore);
+  return value;
 }

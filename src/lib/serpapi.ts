@@ -110,7 +110,12 @@ function toFlight(option: SerpOption, cabinClass: CabinClass, travelers: Travele
 export interface SerpSearchResult {
   flights: Flight[];
   insights?: PriceInsights;
+  fetchedAt?: string; // when Google was asked, so the page can say how old the prices are
 }
+
+// A refresh asked for within this long of the last live lookup gets that lookup, so the button cannot
+// be used to spend credits over and over.
+export const MIN_REFRESH_AGE_MS = 2 * 60 * 1000;
 
 function toInsights(raw: {
   price_level?: string;
@@ -171,8 +176,8 @@ export async function searchSerpApiFlights(params: {
   date: string;
   cabinClass: CabinClass;
   travelers?: TravelerCounts;
-}): Promise<SerpSearchResult> {
-  const result = await searchOnce(params);
+}, fresh = false): Promise<SerpSearchResult> {
+  const result = await searchOnce(params, fresh);
   const travelers = params.travelers ?? SOLO;
   const isSolo = travelers.adults === 1 && travelers.children === 0 && travelers.infants === 0;
   if (isSolo || result.flights.length === 0 || result.insights?.history) return result;
@@ -190,18 +195,22 @@ async function searchOnce(params: {
   date: string;
   cabinClass: CabinClass;
   travelers?: TravelerCounts;
-}): Promise<SerpSearchResult> {
+}, fresh = false): Promise<SerpSearchResult> {
   const travelers = params.travelers ?? SOLO;
   const key = `serp-search:v1:${params.from}|${params.to}|${params.date}|${params.cabinClass}|${travelers.adults}-${travelers.children}-${travelers.infants}`;
-  const pending = searchesInFlight.get(key);
+  // A refresh does not join an ordinary lookup, which may be answered from the store.
+  const flightKey = fresh ? `${key}#fresh` : key;
+  const pending = searchesInFlight.get(flightKey);
   if (pending) return pending;
   const lookup = (async () => {
     const cached = await getJSON<SerpSearchResult>(key);
-    return cached ? withoutDeparted(cached) : requestSearch(key, params, travelers);
+    const age = cached?.fetchedAt ? Date.now() - Date.parse(cached.fetchedAt) : Infinity;
+    const usable = cached && (!fresh || age < MIN_REFRESH_AGE_MS);
+    return usable ? withoutDeparted(cached) : requestSearch(key, params, travelers);
   })().finally(() =>
-    searchesInFlight.delete(key)
+    searchesInFlight.delete(flightKey)
   );
-  searchesInFlight.set(key, lookup);
+  searchesInFlight.set(flightKey, lookup);
   return lookup;
 }
 
@@ -249,7 +258,7 @@ async function requestSearch(
       .sort((a, b) => a.price - b.price);
   }
 
-  const result: SerpSearchResult = { flights, insights: toInsights(body.price_insights) };
+  const result: SerpSearchResult = { flights, insights: toInsights(body.price_insights), fetchedAt: new Date().toISOString() };
   inBackground(setJSON(key, result, SEARCH_CACHE_TTL_SECONDS));
   const cheapest = flights[0];
   if (cheapest && params.cabinClass === "Economy" && travelers.adults === 1 && travelers.children === 0 && travelers.infants === 0) {

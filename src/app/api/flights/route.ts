@@ -11,5 +11,11 @@ export async function GET(request: NextRequest) {
   if (wait > 0) return tooManyRequests(wait);
   const params = parseSearchParams(request.nextUrl.searchParams);
   if (!params) return Response.json({ error: "Invalid search parameters" }, { status: 400 });
-  return Response.json(await searchFlights(params));
+  // "Refresh prices" skips the stored result and spends credits, so it has a tighter limit of its own.
+  const fresh = request.nextUrl.searchParams.get("fresh") === "1";
+  if (fresh) {
+    const refreshWait = rateLimit(request, "flights-refresh", 6);
+    if (refreshWait > 0) return tooManyRequests(refreshWait);
+  }
+  return Response.json(await searchFlights(params, fresh));
 }

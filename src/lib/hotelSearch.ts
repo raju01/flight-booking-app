@@ -11,6 +11,7 @@ export const MAX_GUESTS = 8;
 export interface HotelSearchResult {
   source: DataSource; // hotels are never invented, so this is "live" or "unavailable"
   hotels: Hotel[];
+  fetchedAt?: string;
 }
 
 // Validates a stay request from the query string or a JSON body. Check-in today or later, at most
@@ -31,20 +32,20 @@ export function parseStay(get: (key: string) => string | null | undefined): Stay
   return { query: place.query, checkIn, checkOut, adults };
 }
 
-export async function searchHotels(stay: StaySearch): Promise<HotelSearchResult> {
+export async function searchHotels(stay: StaySearch, fresh = false): Promise<HotelSearchResult> {
   if (!isSerpApiConfigured()) return { source: "unavailable", hotels: [] };
   try {
-    return { source: "live", hotels: await searchSerpApiHotels(stay) };
+    return { source: "live", ...(await searchSerpApiHotels(stay, fresh)) };
   } catch (error) {
     console.error("SerpApi hotel search failed:", error);
     return { source: "unavailable", hotels: [] };
   }
 }
 
-export async function hotelOffers(stay: StaySearch, token: string): Promise<HotelOffer[] | null> {
+export async function hotelOffers(stay: StaySearch, token: string, notBefore = 0): Promise<HotelOffer[] | null> {
   if (!isSerpApiConfigured()) return null;
   try {
-    return await fetchHotelOffers(stay, token);
+    return await fetchHotelOffers(stay, token, notBefore);
   } catch (error) {
     console.error("SerpApi hotel price lookup failed:", error);
     return null;
