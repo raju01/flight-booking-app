@@ -13,14 +13,10 @@ function redis(): { url: string; token: string } | null {
   return url && token ? { url: url.replace(/\/$/, ""), token } : null;
 }
 
-export function isSharedStoreConfigured(): boolean {
-  return redis() !== null;
-}
-
 async function redisCommand(command: (string | number)[]): Promise<unknown> {
   const store = redis();
   if (!store) return null;
-  // No cache option on purpose: API routes then always ask the store, and an hourly-refreshed page may keep
+  // No cache option on purpose: API routes then always ask the store, and a page refreshed every few hours may keep
   // the answer until its next refresh. "no-store" would stop such pages from being prerendered at all.
   const res = await fetch(store.url, {
     method: "POST",

@@ -16,7 +16,7 @@ const travelDay = (date: string) =>
 const checkedDay = (iso: string) =>
   new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
 
-// The page is prerendered and refreshed hourly, so days that have passed since are dropped in the browser.
+// The page is prerendered and refreshed every few hours, so days that have passed since are dropped in the browser.
 export default function RecentFares({ from, to, fares }: { from: string; to: string; fares: SeenFare[] }) {
   const today = useSyncExternalStore(subscribe, todayInIndia, () => "");
   const upcoming = fares.filter((f) => f.date >= today).slice(0, VISIBLE);

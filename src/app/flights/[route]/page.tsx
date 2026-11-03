@@ -19,8 +19,8 @@ import { recentFares } from "@/lib/recentFares";
 
 // Only the curated routes exist; anything else is a 404.
 export const dynamicParams = false;
-// Rebuilt at most hourly so "Fares found recently" picks up new searches.
-export const revalidate = 3600;
+// Rebuilt at most every 3 hours so "Fares found recently" picks up new searches without many store reads.
+export const revalidate = 10800;
 
 export function generateStaticParams() {
   return ROUTES.map((route) => ({ route: routeSlug(route) }));
