@@ -263,3 +263,14 @@ export function BellIcon({
     </svg>
   );
 }
+
+export function HotelIcon({ className = "w-5 h-5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className}>
+      <path d="M3 18V6M21 18v-5a3 3 0 0 0-3-3h-7v8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M3 14h18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <rect x="11" y="10" width="10" height="4" rx="1" fill="currentColor" opacity="0.15" />
+      <circle cx="7" cy="11" r="2" fill="currentColor" />
+    </svg>
+  );
+}

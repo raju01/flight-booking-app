@@ -23,6 +23,15 @@ const ACCENTS = {
     chip: "hover:border-emerald-300 hover:text-emerald-700",
     ring: "focus-visible:ring-emerald-400",
   },
+  amber: {
+    selected: "bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-md shadow-orange-300/60",
+    range: "bg-amber-50 text-amber-900",
+    today: "ring-1 ring-amber-300",
+    focusBorder: "focus:border-amber-400",
+    open: "border-amber-400",
+    chip: "hover:border-amber-300 hover:text-amber-700",
+    ring: "focus-visible:ring-amber-400",
+  },
 } as const;
 
 const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];

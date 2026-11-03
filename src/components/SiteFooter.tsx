@@ -5,7 +5,7 @@ export default function SiteFooter() {
     <footer className="mt-auto border-t border-slate-200 bg-white/60">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-slate-500">
         <p>
-          SkyBook compares flight fares. Tickets are sold by the airlines. We may earn a commission
+          SkyBook compares flight, bus and hotel prices. Tickets and rooms are sold by the airlines, operators and booking sites. We may earn a commission
           when you book through our links.
         </p>
         <nav className="flex flex-wrap gap-4 font-semibold shrink-0">

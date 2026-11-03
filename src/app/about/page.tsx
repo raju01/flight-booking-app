@@ -2,7 +2,7 @@ import LegalPage from "@/components/LegalPage";
 
 export const metadata = {
   title: "About — SkyBook",
-  description: "SkyBook compares flight fares across airlines and booking sites. We do not sell tickets.",
+  description: "SkyBook compares flight fares and hotel prices across airlines and booking sites. We do not sell tickets or rooms.",
   alternates: { canonical: "/about" },
 };
 

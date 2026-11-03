@@ -42,6 +42,11 @@ const ACCENT_STYLES = {
     highlight: "bg-emerald-50",
     badge: "text-emerald-700 bg-emerald-100",
   },
+  amber: {
+    focusRing: "focus:border-amber-400",
+    highlight: "bg-amber-50",
+    badge: "text-amber-800 bg-amber-100",
+  },
 } as const;
 
 export default function AirportAutocomplete({
@@ -55,7 +60,7 @@ export default function AirportAutocomplete({
   value: string;
   onChange: (code: string) => void;
   excludeCode?: string;
-  accent?: "indigo" | "emerald";
+  accent?: keyof typeof ACCENT_STYLES;
 }) {
   const styles = ACCENT_STYLES[accent];
   const listId = useId();

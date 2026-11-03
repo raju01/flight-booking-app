@@ -3,7 +3,7 @@ import { ROUTES, routeSlug } from "@/lib/routes";
 import { SITE_URL } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const pages = ["", "/flights", "/explore", "/about", "/disclosure", "/privacy"];
+  const pages = ["", "/flights", "/hotels", "/explore", "/about", "/disclosure", "/privacy"];
   return [
     ...pages.map((path) => ({
       url: `${SITE_URL}${path}`,

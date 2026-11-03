@@ -59,6 +59,9 @@ export default function SiteHeader() {
           </svg>
         </button>
         <nav className="hidden sm:flex items-center gap-4 text-sm font-medium text-slate-500">
+          <Link href="/hotels" className="hover:text-orange-600 transition-colors">
+            Hotels
+          </Link>
           <Link href="/explore" className="hover:text-indigo-600 transition-colors">
             Explore
           </Link>
@@ -126,6 +129,7 @@ export default function SiteHeader() {
         >
           {[
             ["/", "Search flights"],
+            ["/hotels", "Search hotels"],
             ["/flights", "Flight routes"],
             ["/explore", "Explore"],
             ["/status", "Flight status"],

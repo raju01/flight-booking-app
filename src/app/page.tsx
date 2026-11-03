@@ -3,16 +3,24 @@
 import { useState } from "react";
 import SearchForm from "@/components/SearchForm";
 import BusSearchForm from "@/components/BusSearchForm";
+import HotelSearchForm from "@/components/HotelSearchForm";
 import FareTicker from "@/components/FareTicker";
 import HomeSections from "@/components/HomeSections";
-import { PlaneIcon, BusIcon } from "@/components/icons";
+import { PlaneIcon, BusIcon, HotelIcon } from "@/components/icons";
 
-type Mode = "flights" | "bus";
+type Mode = "flights" | "bus" | "hotels";
 
 const MODES: { key: Mode; label: string; Icon: typeof PlaneIcon }[] = [
   { key: "flights", label: "Flights", Icon: PlaneIcon },
   { key: "bus", label: "Bus", Icon: BusIcon },
+  { key: "hotels", label: "Hotels", Icon: HotelIcon },
 ];
+
+const ACTIVE_TAB: Record<Mode, string> = {
+  flights: "bg-gradient-to-r from-indigo-600 to-fuchsia-500 text-white shadow-lg shadow-violet-300/50",
+  bus: "bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-lg shadow-emerald-300/50",
+  hotels: "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-orange-300/50",
+};
 
 const HERO_COPY: Record<
   Mode,
@@ -31,6 +39,13 @@ const HERO_COPY: Record<
     from: "from-emerald-700",
     via: "via-teal-600",
     to: "to-cyan-500",
+  },
+  hotels: {
+    title: "Compare hotel prices",
+    subtitle: "See what each booking site charges for the same hotel, cheapest first.",
+    from: "from-amber-600",
+    via: "via-orange-500",
+    to: "to-rose-500",
   },
 };
 
@@ -84,9 +99,7 @@ export default function Home() {
                   onClick={() => setMode(m.key)}
                   className={`relative flex-1 sm:flex-none sm:px-8 px-4 py-3 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                     isActive
-                      ? m.key === "flights"
-                        ? "bg-gradient-to-r from-indigo-600 to-fuchsia-500 text-white shadow-lg shadow-violet-300/50"
-                        : "bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-lg shadow-emerald-300/50"
+                      ? ACTIVE_TAB[m.key]
                       : "text-slate-500 hover:text-slate-800 hover:bg-slate-900/5"
                   }`}
                 >
@@ -98,7 +111,7 @@ export default function Home() {
           </div>
 
           <div className="p-4 sm:p-6 pt-2">
-            {mode === "flights" ? <SearchForm /> : <BusSearchForm />}
+            {mode === "flights" ? <SearchForm /> : mode === "bus" ? <BusSearchForm /> : <HotelSearchForm />}
           </div>
         </div>
       </section>
