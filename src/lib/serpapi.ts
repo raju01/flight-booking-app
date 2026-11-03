@@ -212,6 +212,8 @@ async function requestSearch(
     hl: "en",
     gl: "in",
     ...partyQuery(travelers),
+    // SerpApi otherwise answers a repeat of the same query from its own one-hour copy; prices must be live.
+    no_cache: "true",
     api_key: process.env.SERPAPI_API_KEY ?? "",
   });
   const res = await fetch(`https://serpapi.com/search?${query}`, {
@@ -319,6 +321,8 @@ async function requestFlightOffers(params: {
     gl: "in",
     ...partyQuery(params.travelers ?? SOLO),
     booking_token: params.token,
+    // SerpApi otherwise answers a repeat of the same query from its own one-hour copy; prices must be live.
+    no_cache: "true",
     api_key: process.env.SERPAPI_API_KEY ?? "",
   });
   const res = await fetch(`https://serpapi.com/search?${query}`, {

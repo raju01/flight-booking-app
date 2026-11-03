@@ -104,6 +104,8 @@ export async function searchSerpApiBuses(params: { from: string; to: string; dat
     google_domain: "google.co.in",
     gl: "in",
     hl: "en",
+    // SerpApi otherwise answers a repeat of the same query from its own one-hour copy; prices must be live.
+    no_cache: "true",
     api_key: process.env.SERPAPI_API_KEY ?? "",
   });
   const res = await fetch(`https://serpapi.com/search.json?${query}`, {

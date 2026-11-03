@@ -106,6 +106,8 @@ function baseQuery(search: StaySearch): Record<string, string> {
     currency: "INR",
     gl: "in",
     hl: "en",
+    // SerpApi otherwise answers a repeat of the same query from its own one-hour copy; prices must be live.
+    no_cache: "true",
     api_key: process.env.SERPAPI_API_KEY ?? "",
   };
 }
