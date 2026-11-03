@@ -1,12 +1,8 @@
 import { findAirport } from "@/lib/airports";
 import { Bus } from "@/types/bus";
 import { isSerpApiConfigured } from "@/lib/serpapi";
-import { getJSON, inBackground, setJSON } from "@/lib/sharedStore";
-import { nowInIndia } from "@/lib/dates";
 
 const REQUEST_TIMEOUT_MS = 30000;
-// Bus timetables and "from" fares barely move within a day, and each lookup is a SerpApi credit.
-const SEARCH_CACHE_TTL_SECONDS = 6 * 60 * 60;
 
 interface TransportRoute {
   time?: string;
@@ -94,11 +90,7 @@ export async function searchSerpApiBuses(params: { from: string; to: string; dat
     throw new Error("Bus search is not configured");
   }
 
-  const key = `serp-buses:v1:${params.from}|${params.to}|${params.date}`;
-  // Kept for hours, so buses that have already left today are dropped on the way out.
-  const cached = await getJSON<Bus[]>(key);
-  if (cached) return cached.filter((bus) => bus.departureTime > nowInIndia());
-
+  // Always live, like flight prices, so every lookup is a SerpApi credit.
   const [year, month, day] = params.date.split("-").map(Number);
   const when = new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-GB", {
     day: "numeric",
@@ -133,6 +125,5 @@ export async function searchSerpApiBuses(params: { from: string; to: string; dat
     .filter((bus): bus is Bus => bus !== null)
     .sort((a, b) => (a.price ?? Number.MAX_SAFE_INTEGER) - (b.price ?? Number.MAX_SAFE_INTEGER));
 
-  inBackground(setJSON(key, buses, SEARCH_CACHE_TTL_SECONDS));
   return buses;
 }

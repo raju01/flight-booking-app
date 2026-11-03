@@ -1,10 +1,8 @@
 import { Hotel, HotelOffer, StayKind } from "@/types/hotel";
-import { getJSON, inBackground, setJSON } from "@/lib/sharedStore";
 import { todayInIndia } from "@/lib/dates";
 
 const REQUEST_TIMEOUT_MS = 30000;
-// Hotel rates move slowly compared with flights, and each list or seller lookup is a SerpApi credit.
-const CACHE_TTL_SECONDS = 6 * 60 * 60;
+// Hotel lists and seller prices are always live, like flights, so each one is a SerpApi credit.
 const MAX_AMENITIES = 8;
 
 // Google only hands out booking links on its own hotel click host; sponsored "aclk" ads are skipped.
@@ -125,17 +123,11 @@ async function serpRequest<T>(query: Record<string, string>): Promise<T> {
 
 const inFlight = new Map<string, Promise<unknown>>();
 
-// Identical lookups share one request, and answers are kept in the shared store.
-function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
+// Identical lookups running at the same moment share one live request; nothing is stored afterwards.
+function shared<T>(key: string, load: () => Promise<T>): Promise<T> {
   const pending = inFlight.get(key) as Promise<T> | undefined;
   if (pending) return pending;
-  const lookup = (async () => {
-    const hit = await getJSON<T>(key);
-    if (hit) return hit;
-    const fresh = await load();
-    inBackground(setJSON(key, fresh, CACHE_TTL_SECONDS));
-    return fresh;
-  })().finally(() => inFlight.delete(key));
+  const lookup = load().finally(() => inFlight.delete(key));
   inFlight.set(key, lookup);
   return lookup;
 }
@@ -144,7 +136,7 @@ const searchKey = (s: StaySearch) => `${s.query}|${s.checkIn}|${s.checkOut}|${s.
 
 // Up to 20 stays Google lists for the place and dates, cheapest first (unpriced ones last).
 export function searchSerpApiHotels(search: StaySearch): Promise<Hotel[]> {
-  return cached(`serp-hotels:v1:${searchKey(search)}`, async () => {
+  return shared(`serp-hotels:v1:${searchKey(search)}`, async () => {
     const body = await serpRequest<{ properties?: SerpProperty[] }>(baseQuery(search));
     return (body.properties ?? [])
       .map(toHotel)
@@ -156,7 +148,7 @@ export function searchSerpApiHotels(search: StaySearch): Promise<Hotel[]> {
 // Every booking site Google lists for one stay, cheapest per night first. A second credit, so the UI
 // only asks when someone opens the comparison.
 export function fetchHotelOffers(search: StaySearch, token: string): Promise<HotelOffer[]> {
-  return cached(`serp-hotel-offers:v1:${searchKey(search)}|${token}`, async () => {
+  return shared(`serp-hotel-offers:v1:${searchKey(search)}|${token}`, async () => {
     const body = await serpRequest<{ prices?: SerpHotelPrice[] }>({ ...baseQuery(search), property_token: token });
     const offers: HotelOffer[] = [];
     for (const p of body.prices ?? []) {

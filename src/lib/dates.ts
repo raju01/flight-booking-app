@@ -22,11 +22,6 @@ export function todayInIndia(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 }
 
-// India's wall-clock time now as "YYYY-MM-DDTHH:mm:ss", comparable with airport-local departure times.
-export function nowInIndia(): string {
-  return new Date().toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" }).replace(" ", "T");
-}
-
 // Local calendar date `days` from now as YYYY-MM-DD.
 export function futureDate(days: number): string {
   const date = new Date();

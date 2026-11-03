@@ -1,16 +1,17 @@
 import { CabinClass, Flight, FlightOffer, FlightSegment, PriceInsights } from "@/types/flight";
-import { findAirport, isIndianAirport } from "@/lib/airports";
+import { findAirport } from "@/lib/airports";
 import { SOLO } from "@/lib/party";
 import { TravelerCounts } from "@/types/traveler";
 import { createHash } from "node:crypto";
 import { getJSON, inBackground, setJSON } from "@/lib/sharedStore";
-import { nowInIndia } from "@/lib/dates";
 import { recordFare } from "@/lib/recentFares";
 
 const REQUEST_TIMEOUT_MS = 30000;
-// Each search and each seller lookup spends one SerpApi credit, so repeats are served from the shared store
-// (every server instance sees it) for a while. SEARCH_CACHE_TTL_SECONDS overrides the default 30 minutes.
-const SEARCH_CACHE_TTL_SECONDS = Number(process.env.SEARCH_CACHE_TTL_SECONDS) || 30 * 60;
+// Prices are always fetched live (the owner's choice: a stored price can differ from the seller's checkout),
+// so every search and seller lookup spends a SerpApi credit. Identical lookups running at the same moment
+// still share one live request. Only the one-traveller price history, used to draw a group's chart, is
+// kept for a while, since it is not a price anyone books.
+const HISTORY_CACHE_TTL_SECONDS = 6 * 60 * 60;
 
 const TRAVEL_CLASS: Record<CabinClass, string> = {
   Economy: "1",
@@ -131,16 +132,6 @@ function toInsights(raw: {
   return { level, typicalLow, typicalHigh, history: history.length >= 2 ? history : undefined };
 }
 
-// A cached search can be up to SEARCH_CACHE_TTL_SECONDS old, so drop flights from India that have left since.
-// Times are airport-local; for other origins the local clock is unknown here, so they are kept.
-function withoutDeparted(result: SerpSearchResult): SerpSearchResult {
-  const now = nowInIndia();
-  return {
-    ...result,
-    flights: result.flights.filter((f) => !isIndianAirport(f.segments[0].from) || f.segments[0].departureTime > now),
-  };
-}
-
 const searchesInFlight = new Map<string, Promise<SerpSearchResult>>();
 
 // Google reports price history and the usual range for one traveller only. For a group, scale the
@@ -176,10 +167,16 @@ export async function searchSerpApiFlights(params: {
   const travelers = params.travelers ?? SOLO;
   const isSolo = travelers.adults === 1 && travelers.children === 0 && travelers.infants === 0;
   if (isSolo || result.flights.length === 0 || result.insights?.history) return result;
-  // The single-traveller search is cached, so this is at most one extra lookup per route and date.
-  const solo = await searchOnce({ ...params, travelers: SOLO }).catch(() => null);
+  // Google gives price history for one traveller only. It is kept for a few hours, so this is at most one
+  // extra lookup per route and date.
+  const historyKey = `serp-history:v1:${params.from}|${params.to}|${params.date}|${params.cabinClass}`;
+  let soloInsights = await getJSON<PriceInsights>(historyKey);
+  if (!soloInsights) {
+    soloInsights = (await searchOnce({ ...params, travelers: SOLO }).catch(() => null))?.insights ?? null;
+    if (soloInsights) inBackground(setJSON(historyKey, soloInsights, HISTORY_CACHE_TTL_SECONDS));
+  }
   const partyLowest = Math.min(...result.flights.map((f) => f.price));
-  return { ...result, insights: scaleInsights(result.insights, solo?.insights, partyLowest) };
+  return { ...result, insights: scaleInsights(result.insights, soloInsights ?? undefined, partyLowest) };
 }
 
 // Prices are for the whole party (Google returns the total for everyone), so they match what the
@@ -195,18 +192,12 @@ async function searchOnce(params: {
   const key = `serp-search:v1:${params.from}|${params.to}|${params.date}|${params.cabinClass}|${travelers.adults}-${travelers.children}-${travelers.infants}`;
   const pending = searchesInFlight.get(key);
   if (pending) return pending;
-  const lookup = (async () => {
-    const cached = await getJSON<SerpSearchResult>(key);
-    return cached ? withoutDeparted(cached) : requestSearch(key, params, travelers);
-  })().finally(() =>
-    searchesInFlight.delete(key)
-  );
+  const lookup = requestSearch(params, travelers).finally(() => searchesInFlight.delete(key));
   searchesInFlight.set(key, lookup);
   return lookup;
 }
 
 async function requestSearch(
-  key: string,
   params: { from: string; to: string; date: string; cabinClass: CabinClass },
   travelers: TravelerCounts
 ): Promise<SerpSearchResult> {
@@ -250,7 +241,6 @@ async function requestSearch(
   }
 
   const result: SerpSearchResult = { flights, insights: toInsights(body.price_insights) };
-  inBackground(setJSON(key, result, SEARCH_CACHE_TTL_SECONDS));
   const cheapest = flights[0];
   if (cheapest && params.cabinClass === "Economy" && travelers.adults === 1 && travelers.children === 0 && travelers.infants === 0) {
     inBackground(
@@ -299,19 +289,17 @@ export function fetchFlightOffers(params: {
   token: string;
   travelers?: TravelerCounts;
 }): Promise<FlightOffer[]> {
-  // Tokens are long, so the key is a digest of the token and the party it was made for.
+  // Tokens are long, so concurrent identical lookups are matched on a digest of the token and the party.
   const party = params.travelers ?? SOLO;
   const key = `serp-offers:v1:${createHash("sha256").update(`${params.token}|${party.adults}-${party.children}-${party.infants}`).digest("hex")}`;
   const pending = offersInFlight.get(key);
   if (pending) return pending;
-  const lookup = (async () => (await getJSON<FlightOffer[]>(key)) ?? requestFlightOffers(key, params))().finally(() =>
-    offersInFlight.delete(key)
-  );
+  const lookup = requestFlightOffers(params).finally(() => offersInFlight.delete(key));
   offersInFlight.set(key, lookup);
   return lookup;
 }
 
-async function requestFlightOffers(key: string, params: {
+async function requestFlightOffers(params: {
   from: string;
   to: string;
   date: string;
@@ -349,6 +337,5 @@ async function requestFlightOffers(key: string, params: {
     offers.push({ seller: o.book_with, logo: trustedLogo(o.airline_logos?.[0]), baggage: cleanBaggage(o.baggage_prices), price: o.price, url: request.url, postData: request.post_data ?? "" });
   }
   offers.sort((a, b) => a.price - b.price);
-  inBackground(setJSON(key, offers, SEARCH_CACHE_TTL_SECONDS));
   return offers;
 }
