@@ -24,6 +24,7 @@ import PriceInsightBanner from "@/components/PriceInsightBanner";
 import SortTabs, { SortSummary } from "@/components/SortTabs";
 import DateChangeDialog, { DateChange } from "@/components/DateChangeDialog";
 import RoadAlternative from "@/components/RoadAlternative";
+import HotelSuggestion from "@/components/HotelSuggestion";
 import UnavailableNotice from "@/components/UnavailableNotice";
 import { CabinClass, Flight, PriceInsights } from "@/types/flight";
 import { MultiCityLeg } from "@/types/multiCity";
@@ -519,6 +520,9 @@ function SearchResults() {
               />
               <FlightList flights={sortedReturn} isLoading={isLoading} filtersActive={filtersActive} unavailable={unavailable} />
             </section>
+          )}
+          {results?.key === searchKey && results.source === "live" && outboundFlights.length > 0 && (
+            <HotelSuggestion city={to} className="mt-6" />
           )}
         </div>
       </div>

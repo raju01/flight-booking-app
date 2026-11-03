@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import HotelSuggestion from "@/components/HotelSuggestion";
 import RecentFares from "@/components/RecentFares";
 import RouteSearchButton from "@/components/RouteSearchButton";
 import { findAirport } from "@/lib/airports";
@@ -141,6 +142,8 @@ export default async function RoutePage({ params }: { params: Promise<{ route: s
       </header>
 
       <RecentFares from={route.from} to={route.to} fares={fares} />
+
+      <HotelSuggestion city={route.to} className="mt-10" />
 
       <section className="mt-10 grid sm:grid-cols-2 gap-4">
         {[from, to].map((airport, i) => (

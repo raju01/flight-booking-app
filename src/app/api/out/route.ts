@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { busPartnerUrl, flightPartnerUrl, trackerWorks, withAffiliate } from "@/lib/outboundBooking";
 import { airlineBookingLink, isAffiliateAirline } from "@/lib/airlineSites";
 import { parseTravelers } from "@/lib/party";
+import { CLEARTRIP_HOTELS_URL, hotelTown } from "@/lib/hotelCities";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -13,7 +14,8 @@ export async function GET(request: NextRequest) {
   const from = params.get("from") ?? "";
   const to = params.get("to") ?? "";
   const date = params.get("date") ?? "";
-  if (!DATE.test(date)) return Response.json({ error: "Invalid parameters" }, { status: 400 });
+  // A hotel link opens Cleartrip Hotels' own page, so it is the only kind without a travel date.
+  if (type !== "hotel" && !DATE.test(date)) return Response.json({ error: "Invalid parameters" }, { status: 400 });
 
   let href: string;
   let plain: string;
@@ -35,6 +37,11 @@ export async function GET(request: NextRequest) {
   } else if (type === "merchant" && params.get("name") === "cleartrip") {
     plain = "https://www.cleartrip.com/flights/";
     href = withAffiliate(plain);
+  } else if (type === "hotel") {
+    // Cleartrip Hotels (see hotelCities.ts for why it is always the same page). The city is only logged.
+    if (!hotelTown(params.get("city") ?? "")) return Response.json({ error: "Invalid parameters" }, { status: 400 });
+    plain = CLEARTRIP_HOTELS_URL;
+    href = withAffiliate(plain);
   } else if (type === "bus") {
     if (!from || !to || from.length > 60 || to.length > 60) {
       return Response.json({ error: "Invalid parameters" }, { status: 400 });
@@ -54,7 +61,7 @@ export async function GET(request: NextRequest) {
       at: new Date().toISOString(),
       event: "partner_click",
       kind: type,
-      route: `${from}-${to}`,
+      route: type === "hotel" ? params.get("city") : `${from}-${to}`,
       tracked: href !== plain,
     })
   );
