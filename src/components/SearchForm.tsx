@@ -10,6 +10,7 @@ import { CabinClass } from "@/types/flight";
 import { MultiCityLeg } from "@/types/multiCity";
 import { TravelerCounts, totalTravelers } from "@/types/traveler";
 import { addSearchHistoryEntry } from "@/lib/searchHistory";
+import { parseTravelers } from "@/lib/party";
 import { SearchHistoryEntry } from "@/types/searchHistory";
 
 import DatePicker from "@/components/DatePicker";
@@ -154,6 +155,7 @@ export default function SearchForm() {
       departDate,
       returnDate: tripType === "round-trip" ? returnDate : undefined,
       passengers: totalTravelers(travelers),
+      travelers,
       cabinClass,
       tripType,
     });
@@ -168,7 +170,8 @@ export default function SearchForm() {
     setDepartDate(entry.departDate);
     if (entry.returnDate) setReturnDate(entry.returnDate);
     setCabinClass(entry.cabinClass);
-    setTravelers({ adults: entry.passengers, children: 0, infants: 0 });
+    // Older entries only kept the total, so the party is read back through the same clamping as the URL.
+    setTravelers(parseTravelers((key) => entry.travelers?.[key as keyof TravelerCounts], entry.passengers));
   }
 
   return (

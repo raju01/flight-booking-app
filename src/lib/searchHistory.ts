@@ -1,5 +1,6 @@
 import { CabinClass } from "@/types/flight";
 import { SearchHistoryEntry } from "@/types/searchHistory";
+import { TravelerCounts } from "@/types/traveler";
 
 const STORAGE_KEY = "skybook_search_history";
 const MAX_ENTRIES = 6;
@@ -22,6 +23,7 @@ export function addSearchHistoryEntry(entry: {
   departDate: string;
   returnDate?: string;
   passengers: number;
+  travelers: TravelerCounts;
   cabinClass: CabinClass;
   tripType: "one-way" | "round-trip";
 }) {

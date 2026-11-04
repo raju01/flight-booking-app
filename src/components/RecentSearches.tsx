@@ -5,6 +5,19 @@ import { loadSearchHistory } from "@/lib/searchHistory";
 import { SearchHistoryEntry } from "@/types/searchHistory";
 import { ClockIcon } from "@/components/icons";
 
+// "2 adults, 1 child"; older entries only kept the total.
+function party(entry: SearchHistoryEntry): string {
+  const t = entry.travelers;
+  if (!t) return `${entry.passengers} travellers`;
+  return [
+    `${t.adults} adult${t.adults > 1 ? "s" : ""}`,
+    t.children > 0 ? `${t.children} child${t.children > 1 ? "ren" : ""}` : null,
+    t.infants > 0 ? `${t.infants} infant${t.infants > 1 ? "s" : ""}` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
 export default function RecentSearches({
   onSelect,
 }: {
@@ -38,6 +51,7 @@ export default function RecentSearches({
             {entry.tripType === "round-trip" && (
               <span className="text-slate-500 font-normal">round trip</span>
             )}
+            {entry.passengers > 1 && <span className="text-slate-500 font-normal">· {party(entry)}</span>}
           </button>
         ))}
       </div>
