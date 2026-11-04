@@ -3,20 +3,21 @@
 import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
 import DatePicker from "@/components/DatePicker";
-import AirportAutocomplete from "@/components/AirportAutocomplete";
+import HotelDestinationPicker from "@/components/HotelDestinationPicker";
 import { HotelIcon } from "@/components/icons";
 import { addDays, futureDate } from "@/lib/dates";
+import { MAX_HOTEL_ADULTS, MAX_HOTEL_CHILDREN } from "@/lib/hotelCities";
 
 const subscribe = () => () => {};
 const MAX_NIGHTS = 30;
-const MAX_GUESTS = 8;
+const DEFAULT_CHILD_AGE = 8;
 
 const inputClass =
   "w-full border-2 border-slate-200 rounded-2xl px-4 py-2.5 bg-white text-slate-900 transition-colors focus:outline-none focus:border-amber-400";
 
 export default function HotelSearchForm() {
   const router = useRouter();
-  const [city, setCity] = useState("GOI");
+  const [place, setPlace] = useState("Goa");
   // Dates are picked in the browser so the prerendered page never offers a day that has passed.
   const today = useSyncExternalStore(subscribe, () => futureDate(0), () => "");
   const maxDate = useSyncExternalStore(subscribe, () => futureDate(330), () => "");
@@ -25,21 +26,31 @@ export default function HotelSearchForm() {
   const checkIn = checkInEdit ?? (today && addDays(today, 7));
   const checkOut = checkOutEdit && checkOutEdit > checkIn ? checkOutEdit : checkIn && addDays(checkIn, 2);
   const [openPicker, setOpenPicker] = useState<"in" | "out" | null>(null);
-  const [guests, setGuests] = useState(2);
+  const [adults, setAdults] = useState(2);
+  // One entry per child: its age, which hotels need to price the room.
+  const [childAges, setChildAges] = useState<number[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!city || !checkIn || !checkOut) return;
+    if (!place.trim() || !checkIn || !checkOut) return;
     setIsSearching(true);
-    router.push(`/hotel-search?${new URLSearchParams({ city, checkIn, checkOut, adults: String(guests) })}`);
+    router.push(
+      `/hotel-search?${new URLSearchParams({
+        place: place.trim(),
+        checkIn,
+        checkOut,
+        adults: String(adults),
+        ...(childAges.length > 0 && { childAges: childAges.join(",") }),
+      })}`
+    );
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <AirportAutocomplete label="City or destination" value={city} onChange={setCity} accent="amber" />
+      <HotelDestinationPicker value={place} onChange={setPlace} />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div>
           <label className="block text-xs font-semibold text-slate-500 mb-1">Check-in</label>
           <DatePicker
@@ -79,23 +90,70 @@ export default function HotelSearchForm() {
           />
         </div>
         <div>
-          <label htmlFor="hotel-guests" className="block text-xs font-semibold text-slate-500 mb-1">
-            Guests
+          <label htmlFor="hotel-adults" className="block text-xs font-semibold text-slate-500 mb-1">
+            Adults
           </label>
           <select
-            id="hotel-guests"
-            value={guests}
-            onChange={(e) => setGuests(Number(e.target.value))}
+            id="hotel-adults"
+            value={adults}
+            onChange={(e) => setAdults(Number(e.target.value))}
             className={`${inputClass} cursor-pointer`}
           >
-            {Array.from({ length: MAX_GUESTS }, (_, i) => i + 1).map((n) => (
+            {Array.from({ length: MAX_HOTEL_ADULTS }, (_, i) => i + 1).map((n) => (
               <option key={n} value={n}>
                 {n} adult{n > 1 ? "s" : ""}
               </option>
             ))}
           </select>
         </div>
+        <div>
+          <label htmlFor="hotel-children" className="block text-xs font-semibold text-slate-500 mb-1">
+            Children
+          </label>
+          <select
+            id="hotel-children"
+            value={childAges.length}
+            onChange={(e) => {
+              const count = Number(e.target.value);
+              setChildAges((ages) => Array.from({ length: count }, (_, i) => ages[i] ?? DEFAULT_CHILD_AGE));
+            }}
+            className={`${inputClass} cursor-pointer`}
+          >
+            {Array.from({ length: MAX_HOTEL_CHILDREN + 1 }, (_, i) => i).map((n) => (
+              <option key={n} value={n}>
+                {n === 0 ? "No children" : `${n} child${n > 1 ? "ren" : ""}`}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
+
+      {childAges.length > 0 && (
+        <fieldset className="rounded-2xl border border-amber-100 bg-amber-50/50 p-3">
+          <legend className="px-1 text-xs font-semibold text-slate-600">Age of each child at check-in</legend>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {childAges.map((age, i) => (
+              <label key={i} className="text-xs font-semibold text-slate-500">
+                Child {i + 1}
+                <select
+                  value={age}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    setChildAges((ages) => ages.map((a, j) => (j === i ? next : a)));
+                  }}
+                  className={`${inputClass} mt-1 cursor-pointer`}
+                >
+                  {Array.from({ length: 17 }, (_, n) => n + 1).map((n) => (
+                    <option key={n} value={n}>
+                      {n} year{n > 1 ? "s" : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
       <button
         type="submit"

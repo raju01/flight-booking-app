@@ -2,11 +2,10 @@ import { Hotel, HotelOffer } from "@/types/hotel";
 import type { DataSource } from "@/lib/flightSearch";
 import { isSerpApiConfigured } from "@/lib/serpapi";
 import { fetchHotelOffers, searchSerpApiHotels, StaySearch } from "@/lib/serpHotels";
-import { stayPlace } from "@/lib/hotelCities";
+import { MAX_HOTEL_ADULTS, parseChildAges, placeParam, resolveStayPlace } from "@/lib/hotelCities";
 import { addDays, parseISODate, toISODate, todayInIndia } from "@/lib/dates";
 
 export const MAX_NIGHTS = 30;
-export const MAX_GUESTS = 8;
 
 export interface HotelSearchResult {
   source: DataSource; // hotels are never invented, so this is "live" or "unavailable"
@@ -16,19 +15,20 @@ export interface HotelSearchResult {
 // Validates a stay request from the query string or a JSON body. Check-in today or later, at most
 // MAX_NIGHTS nights and a year ahead.
 export function parseStay(get: (key: string) => string | null | undefined): StaySearch | null {
-  const place = stayPlace(String(get("city") ?? ""));
+  const place = resolveStayPlace(placeParam(get));
+  const childAges = parseChildAges(get("childAges"));
   const checkIn = String(get("checkIn") ?? "");
   const checkOut = String(get("checkOut") ?? "");
   const adults = Number(get("adults") ?? "2");
   const start = parseISODate(checkIn);
   const end = parseISODate(checkOut);
-  if (!place || !start || !end || !Number.isInteger(adults) || adults < 1 || adults > MAX_GUESTS) return null;
+  if (!place || !childAges || !start || !end || !Number.isInteger(adults) || adults < 1 || adults > MAX_HOTEL_ADULTS) return null;
   if (toISODate(start) !== checkIn || toISODate(end) !== checkOut) return null;
   const today = todayInIndia();
   const nights = Math.round((end.getTime() - start.getTime()) / 86_400_000);
   if (checkIn < today || nights < 1 || nights > MAX_NIGHTS) return null;
   if (checkIn > addDays(today, 365)) return null;
-  return { query: place.query, checkIn, checkOut, adults };
+  return { query: place.query, checkIn, checkOut, adults, childAges };
 }
 
 export async function searchHotels(stay: StaySearch): Promise<HotelSearchResult> {

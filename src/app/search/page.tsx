@@ -25,6 +25,7 @@ import SortTabs, { SortSummary } from "@/components/SortTabs";
 import DateChangeDialog, { DateChange } from "@/components/DateChangeDialog";
 import RoadAlternative from "@/components/RoadAlternative";
 import HotelSuggestion from "@/components/HotelSuggestion";
+import { hotelTown } from "@/lib/hotelCities";
 import SearchProgress from "@/components/SearchProgress";
 import UnavailableNotice from "@/components/UnavailableNotice";
 import { CabinClass, Flight, PriceInsights } from "@/types/flight";
@@ -523,7 +524,7 @@ function SearchResults() {
             </section>
           )}
           {results?.key === searchKey && results.source === "live" && outboundFlights.length > 0 && (
-            <HotelSuggestion city={to} className="mt-6" />
+            <HotelSuggestion place={hotelTown(to)} className="mt-6" />
           )}
         </div>
       </div>

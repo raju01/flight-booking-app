@@ -1,6 +1,6 @@
 import { airlineBookingLink, isAffiliateAirline } from "@/lib/airlineSites";
 import { SOLO } from "@/lib/party";
-import { hotelTown } from "@/lib/hotelCities";
+import { resolveStayPlace } from "@/lib/hotelCities";
 import { Flight } from "@/types/flight";
 
 export interface OutboundLink {
@@ -81,15 +81,15 @@ export function directBookingLinks(flight: Flight): OutboundLink[] {
   return links;
 }
 
-// Cleartrip Hotels for an Indian destination; the label names the town to search for there.
-export function hotelLink(airportCode: string): (OutboundLink & { town: string }) | null {
-  const town = hotelTown(airportCode);
-  if (!town) return null;
+// Cleartrip Hotels for a destination in India; the label names the town to search for there.
+export function hotelLink(place: string | null | undefined): (OutboundLink & { town: string }) | null {
+  const resolved = place ? resolveStayPlace(place) : null;
+  if (!resolved?.india) return null;
   return {
-    town,
-    label: `Find hotels in ${town}`,
+    town: resolved.name,
+    label: `Find hotels in ${resolved.name}`,
     seller: "Cleartrip",
-    href: `/api/out?${new URLSearchParams({ type: "hotel", city: airportCode })}`,
+    href: `/api/out?${new URLSearchParams({ type: "hotel", town: resolved.name })}`,
   };
 }
 

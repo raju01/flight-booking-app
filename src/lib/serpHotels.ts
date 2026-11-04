@@ -13,6 +13,7 @@ export interface StaySearch {
   checkIn: string; // YYYY-MM-DD
   checkOut: string;
   adults: number;
+  childAges: number[]; // one age (1-17) per child
 }
 
 interface SerpRate {
@@ -103,6 +104,7 @@ function baseQuery(search: StaySearch): Record<string, string> {
     check_in_date: search.checkIn,
     check_out_date: search.checkOut,
     adults: String(search.adults),
+    ...(search.childAges.length > 0 && { children: String(search.childAges.length), children_ages: search.childAges.join(",") }),
     currency: "INR",
     gl: "in",
     hl: "en",
@@ -134,7 +136,7 @@ function shared<T>(key: string, load: () => Promise<T>): Promise<T> {
   return lookup;
 }
 
-const searchKey = (s: StaySearch) => `${s.query}|${s.checkIn}|${s.checkOut}|${s.adults}`;
+const searchKey = (s: StaySearch) => `${s.query}|${s.checkIn}|${s.checkOut}|${s.adults}|${s.childAges.join(",")}`;
 
 // Up to 20 stays Google lists for the place and dates, cheapest first (unpriced ones last).
 export function searchSerpApiHotels(search: StaySearch): Promise<Hotel[]> {

@@ -6,7 +6,7 @@ import { SITE_NAME } from "@/lib/site";
 export const metadata: Metadata = {
   title: `Hotels — compare prices across booking sites | ${SITE_NAME}`,
   description:
-    "Compare hotel and holiday home prices in Goa, Jaipur, Udaipur, Leh and more. See what each booking site charges for the same hotel, cheapest first.",
+    "Compare hotel and holiday home prices in Goa, Manali, Munnar, Jaipur, Udaipur, Rishikesh and hundreds more places in India. See what each booking site charges for the same hotel, cheapest first.",
   alternates: { canonical: "/hotels" },
 };
 

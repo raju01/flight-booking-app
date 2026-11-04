@@ -11,7 +11,7 @@ import DataSourceBadge from "@/components/DataSourceBadge";
 import { HotelIcon } from "@/components/icons";
 import { formatPrice } from "@/lib/currency";
 import { parseISODate, todayInIndia } from "@/lib/dates";
-import { stayPlace } from "@/lib/hotelCities";
+import { parseChildAges, placeParam, resolveStayPlace } from "@/lib/hotelCities";
 import type { DataSource } from "@/lib/flightSearch";
 import { Hotel, StayKind } from "@/types/hotel";
 
@@ -23,19 +23,26 @@ const prettyDate = (iso: string) =>
 
 function HotelResults() {
   const searchParams = useSearchParams();
-  const city = searchParams.get("city") ?? "";
+  // `place=Manali`, or the older `city=GOI` form.
+  const placeName = placeParam((key) => searchParams.get(key));
   const checkIn = searchParams.get("checkIn") ?? "";
   const checkOut = searchParams.get("checkOut") ?? "";
   const adults = Number(searchParams.get("adults") ?? "2") || 2;
-  const place = stayPlace(city);
+  const childAgesParam = searchParams.get("childAges") ?? "";
+  const childAges = parseChildAges(childAgesParam);
+  const children = childAges?.length ?? 0;
+  const place = resolveStayPlace(placeName);
   const today = useSyncExternalStore(subscribe, todayInIndia, () => "");
 
   const start = parseISODate(checkIn);
   const end = parseISODate(checkOut);
   const nights = start && end ? Math.round((end.getTime() - start.getTime()) / 86_400_000) : 0;
-  const stay = useMemo<StayParams>(() => ({ city, checkIn, checkOut, adults, nights }), [city, checkIn, checkOut, adults, nights]);
+  const stay = useMemo<StayParams>(
+    () => ({ place: placeName, checkIn, checkOut, adults, childAges: childAgesParam, nights }),
+    [placeName, checkIn, checkOut, adults, childAgesParam, nights]
+  );
 
-  const searchKey = `${city}|${checkIn}|${checkOut}|${adults}`;
+  const searchKey = `${placeName}|${checkIn}|${checkOut}|${adults}|${childAgesParam}`;
   const [results, setResults] = useState<{ key: string; hotels: Hotel[]; source: DataSource } | null>(null);
   const [failedKey, setFailedKey] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortBy>("price");
@@ -43,20 +50,22 @@ function HotelResults() {
   const [kind, setKind] = useState<"any" | StayKind>("any");
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
 
-  const valid = Boolean(place && nights >= 1);
+  const valid = Boolean(place && childAges && nights >= 1);
   const passed = Boolean(today && checkIn && checkIn < today);
 
   useEffect(() => {
     if (!valid || passed || !today) return;
     const controller = new AbortController();
-    fetch(`/api/hotels?${new URLSearchParams({ city, checkIn, checkOut, adults: String(adults) })}`, { signal: controller.signal })
+    const query = new URLSearchParams({ place: placeName, checkIn, checkOut, adults: String(adults) });
+    if (childAgesParam) query.set("childAges", childAgesParam);
+    fetch(`/api/hotels?${query}`, { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
       .then((body: { hotels: Hotel[]; source: DataSource }) => setResults({ key: searchKey, hotels: body.hotels, source: body.source }))
       .catch((error: unknown) => {
         if ((error as Error).name !== "AbortError") setFailedKey(searchKey);
       });
     return () => controller.abort();
-  }, [valid, passed, today, city, checkIn, checkOut, adults, searchKey]);
+  }, [valid, passed, today, placeName, checkIn, checkOut, adults, childAgesParam, searchKey]);
 
   const current = results?.key === searchKey ? results : null;
   const hotels = useMemo(() => current?.hotels ?? [], [current]);
@@ -109,8 +118,9 @@ function HotelResults() {
             Hotels in {place!.name}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            {prettyDate(checkIn)} – {prettyDate(checkOut)} · {nights} night{nights > 1 ? "s" : ""} · {adults} guest
+            {prettyDate(checkIn)} – {prettyDate(checkOut)} · {nights} night{nights > 1 ? "s" : ""} · {adults} adult
             {adults > 1 ? "s" : ""}
+            {children > 0 && ` · ${children} child${children > 1 ? "ren" : ""}`}
             {current && (
               <span className="ml-2 align-middle">
                 <DataSourceBadge source={current.source} liveLabel="Live prices" />
@@ -220,7 +230,7 @@ function HotelResults() {
               ))}
             </div>
           )}
-          {!loading && !unavailable && <HotelSuggestion city={city} className="mt-6" />}
+          {!loading && !unavailable && <HotelSuggestion place={place?.name ?? null} className="mt-6" />}
           {!loading && !unavailable && (
             <p className="mt-4 text-[11px] leading-relaxed text-slate-500">
               Prices come from Google Hotels for your guests and dates, and can change at checkout. We list booking

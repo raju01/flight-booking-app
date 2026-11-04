@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { busPartnerUrl, flightPartnerUrl, trackerWorks, withAffiliate } from "@/lib/outboundBooking";
 import { airlineBookingLink, isAffiliateAirline } from "@/lib/airlineSites";
 import { parseTravelers } from "@/lib/party";
-import { CLEARTRIP_HOTELS_URL, hotelTown } from "@/lib/hotelCities";
+import { CLEARTRIP_HOTELS_URL, resolveStayPlace } from "@/lib/hotelCities";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -38,8 +38,8 @@ export async function GET(request: NextRequest) {
     plain = "https://www.cleartrip.com/flights/";
     href = withAffiliate(plain);
   } else if (type === "hotel") {
-    // Cleartrip Hotels (see hotelCities.ts for why it is always the same page). The city is only logged.
-    if (!hotelTown(params.get("city") ?? "")) return Response.json({ error: "Invalid parameters" }, { status: 400 });
+    // Cleartrip Hotels (see hotelCities.ts for why it is always the same page). The town is only logged.
+    if (!resolveStayPlace(params.get("town") ?? "")?.india) return Response.json({ error: "Invalid parameters" }, { status: 400 });
     plain = CLEARTRIP_HOTELS_URL;
     href = withAffiliate(plain);
   } else if (type === "bus") {
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       at: new Date().toISOString(),
       event: "partner_click",
       kind: type,
-      route: type === "hotel" ? params.get("city") : `${from}-${to}`,
+      route: type === "hotel" ? params.get("town") : `${from}-${to}`,
       tracked: href !== plain,
     })
   );

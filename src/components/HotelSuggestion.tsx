@@ -4,8 +4,9 @@ import { hotelLink } from "@/lib/outboundLinks";
 import { trackEvent } from "@/lib/track";
 
 // A quiet "where to stay" link for the destination, opened on Cleartrip Hotels (a commission partner).
-export default function HotelSuggestion({ city, className = "" }: { city: string; className?: string }) {
-  const link = hotelLink(city);
+// `place` is a town name, e.g. "Goa" (use hotelTown() to turn an airport code into one).
+export default function HotelSuggestion({ place, className = "" }: { place: string | null; className?: string }) {
+  const link = hotelLink(place);
   if (!link) return null;
   return (
     <div
@@ -22,7 +23,7 @@ export default function HotelSuggestion({ city, className = "" }: { city: string
         href={link.href}
         target="_blank"
         rel="noopener noreferrer sponsored"
-        onClick={() => trackEvent({ event: "hotel_click", city })}
+        onClick={() => trackEvent({ event: "hotel_click", town: link.town })}
         className="shrink-0 self-start sm:self-auto rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-2 text-sm font-bold text-white hover:shadow-lg hover:shadow-orange-200 transition-all active:scale-95"
       >
         {link.label} →

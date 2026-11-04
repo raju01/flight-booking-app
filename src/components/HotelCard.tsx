@@ -7,10 +7,11 @@ import { trackEvent } from "@/lib/track";
 import { StarIcon } from "@/components/icons";
 
 export interface StayParams {
-  city: string;
+  place: string;
   checkIn: string;
   checkOut: string;
   adults: number;
+  childAges: string; // "5,9", or "" for no children
   nights: number;
 }
 
@@ -21,7 +22,7 @@ const VISIBLE_OFFERS = 5;
 const offersCache = new Map<string, HotelOffer[]>();
 
 function HotelCompare({ hotel, stay }: { hotel: Hotel; stay: StayParams }) {
-  const cacheKey = `${hotel.id}|${stay.checkIn}|${stay.checkOut}|${stay.adults}`;
+  const cacheKey = `${hotel.id}|${stay.checkIn}|${stay.checkOut}|${stay.adults}|${stay.childAges}`;
   const [state, setState] = useState<OffersState>(() => {
     const cached = offersCache.get(cacheKey);
     return cached ? { status: "done", offers: cached } : { status: "loading" };
@@ -34,7 +35,14 @@ function HotelCompare({ hotel, stay }: { hotel: Hotel; stay: StayParams }) {
     fetch("/api/hotels/offers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token: hotel.id, city: stay.city, checkIn: stay.checkIn, checkOut: stay.checkOut, adults: stay.adults }),
+      body: JSON.stringify({
+        token: hotel.id,
+        place: stay.place,
+        checkIn: stay.checkIn,
+        checkOut: stay.checkOut,
+        adults: stay.adults,
+        ...(stay.childAges && { childAges: stay.childAges }),
+      }),
       signal: controller.signal,
     })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
@@ -119,7 +127,7 @@ function HotelCompare({ hotel, stay }: { hotel: Hotel; stay: StayParams }) {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() =>
-                      trackEvent({ event: "hotel_offer_click", seller: offer.seller, price: offer.pricePerNight, rank: index + 1, sites: offers.length, city: stay.city })
+                      trackEvent({ event: "hotel_offer_click", seller: offer.seller, price: offer.pricePerNight, rank: index + 1, sites: offers.length, town: stay.place })
                     }
                     className={`text-sm font-bold rounded-full px-3 sm:px-4 py-2 transition-all active:scale-95 ${
                       index === 0
@@ -149,7 +157,9 @@ function HotelCompare({ hotel, stay }: { hotel: Hotel; stay: StayParams }) {
             </button>
           )}
           <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
-            Prices come from Google Hotels for {stay.adults} guest{stay.adults > 1 ? "s" : ""} and can change at checkout. Sites may
+            Prices come from Google Hotels for {stay.adults} adult{stay.adults > 1 ? "s" : ""}
+            {stay.childAges && ` and ${stay.childAges.split(",").length} child${stay.childAges.includes(",") ? "ren" : ""}`} and can
+            change at checkout. Sites may
             price different rooms, so check the room type and what&rsquo;s included before you book.
           </p>
         </>
